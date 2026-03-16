@@ -1,1 +1,1605 @@
+openapi: 3.1.0
 
+info:
+  title: AeroSys 9000 — Avionics REST API
+  version: 2.1.0
+  description: |
+    ## AeroSys Integrated Avionics Suite — REST API
+
+    Full-stack RESTful interface to the AeroSys 9000 avionics platform.
+    Provides real-time telemetry, flight management, autopilot control,
+    navigation, engine monitoring, and system health endpoints.
+
+    All endpoints require JWT bearer authentication unless marked public.
+    Rate limits: 60 req/min standard, 600 req/min for telemetry streams.
+
+    **Ada Implementation**: Built with GNAT/GCC + AWS (Ada Web Server) 24.0
+  contact:
+    name: AeroSys Engineering
+    email: avionics@aerosys.aero
+    url: https://aerosys.aero/docs
+  license:
+    name: DO-178C Certified Software
+    identifier: Proprietary
+
+servers:
+  - url: https://fms.aerosys.local/api/v2
+    description: Aircraft FMS (local avionics bus)
+  - url: https://ground.aerosys.aero/api/v2
+    description: Ground Station Relay
+  - url: http://localhost:8080/api/v2
+    description: Development / Simulator
+
+tags:
+  - name: Telemetry
+    description: Real-time flight data & sensor readings
+  - name: Flight Management
+    description: FMS route, waypoints, performance
+  - name: Autopilot
+    description: Autopilot modes, targets, engagement
+  - name: Navigation
+    description: Navigation display, position, fixes
+  - name: Engine
+    description: Engine parameters & FADEC interface
+  - name: Systems
+    description: Aircraft systems monitoring & control
+  - name: Communications
+    description: VHF radio, transponder, ACARS
+  - name: Alerts
+    description: Cautions, warnings, and advisories
+  - name: Health
+    description: System health & diagnostics
+
+# ─────────────────────────────────────────────────────────
+# PATHS
+# ─────────────────────────────────────────────────────────
+paths:
+
+  # ── TELEMETRY ──────────────────────────────────────────
+  /telemetry:
+    get:
+      summary: Get current flight telemetry snapshot
+      operationId: getTelemetry
+      tags: [Telemetry]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/FlightIdQuery'
+      responses:
+        '200':
+          description: Current telemetry snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelemetrySnapshot'
+              example:
+                timestamp: "2026-03-13T14:22:47.821Z"
+                flight_id: "AS2847"
+                attitude:
+                  pitch_deg: 1.2
+                  roll_deg: 2.5
+                  yaw_deg: 0.4
+                  pitch_rate: 0.02
+                  roll_rate: 0.01
+                speeds:
+                  ias_kt: 280
+                  cas_kt: 280
+                  tas_kt: 458
+                  gs_kt: 481
+                  mach: 0.840
+                  vmo_kt: 340
+                position:
+                  latitude: 47.3821
+                  longitude: -42.7419
+                  altitude_ft: 37000
+                  flight_level: 370
+                  vs_fpm: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/DataBusError'
+
+  /telemetry/stream:
+    get:
+      summary: Server-Sent Events stream for live telemetry
+      operationId: streamTelemetry
+      tags: [Telemetry]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: rate_hz
+          in: query
+          description: Update rate in Hz (1–50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: SSE stream of TelemetrySnapshot objects
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE formatted TelemetrySnapshot JSON
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /telemetry/history:
+    get:
+      summary: Query historical telemetry
+      operationId: getTelemetryHistory
+      tags: [Telemetry]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: fields
+          in: query
+          description: Comma-separated list of fields to include
+          schema:
+            type: string
+            example: "altitude_ft,ias_kt,mach"
+        - name: interval_sec
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 3600
+            default: 10
+      responses:
+        '200':
+          description: Array of telemetry records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  records:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TelemetrySnapshot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ── AUTOPILOT ──────────────────────────────────────────
+  /autopilot:
+    get:
+      summary: Get autopilot state
+      operationId: getAutopilot
+      tags: [Autopilot]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Full autopilot state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutopilotState'
+
+  /autopilot/engage:
+    post:
+      summary: Engage or disengage autopilot master
+      operationId: engageAutopilot
+      tags: [Autopilot]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [engaged]
+              properties:
+                engaged:
+                  type: boolean
+                  description: true to engage, false to disconnect
+                source:
+                  type: string
+                  enum: [pilot, copilot, fms, ground]
+                  default: fms
+      responses:
+        '200':
+          description: Autopilot state after command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutopilotState'
+        '409':
+          description: Engagement refused — aircraft attitude out of limits
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '423':
+          description: Autopilot locked by priority source
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /autopilot/modes:
+    put:
+      summary: Set autopilot lateral and vertical modes
+      operationId: setAutopilotModes
+      tags: [Autopilot]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutopilotModeCommand'
+      responses:
+        '200':
+          description: Updated autopilot state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutopilotState'
+        '422':
+          description: Mode not available in current flight phase
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /autopilot/targets:
+    patch:
+      summary: Update autopilot target values
+      operationId: updateAutopilotTargets
+      tags: [Autopilot]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutopilotTargets'
+            examples:
+              altitude_change:
+                summary: Change target altitude
+                value:
+                  target_altitude_ft: 39000
+              heading_change:
+                summary: Direct heading
+                value:
+                  target_heading_deg: 090
+                  lateral_mode: HDG_SEL
+      responses:
+        '200':
+          description: Updated targets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutopilotTargets'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ── FLIGHT MANAGEMENT ──────────────────────────────────
+  /fms/route:
+    get:
+      summary: Get active FMS route
+      operationId: getRoute
+      tags: [Flight Management]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Active flight plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightPlan'
+
+    put:
+      summary: Replace active flight plan
+      operationId: setRoute
+      tags: [Flight Management]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlightPlanInput'
+      responses:
+        '200':
+          description: Accepted flight plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightPlan'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          description: Route validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteValidationError'
+
+  /fms/route/waypoints:
+    post:
+      summary: Insert waypoint into active route
+      operationId: insertWaypoint
+      tags: [Flight Management]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [waypoint, position]
+              properties:
+                waypoint:
+                  $ref: '#/components/schemas/Waypoint'
+                position:
+                  type: integer
+                  description: Sequence position (0 = before first, -1 = append)
+                  minimum: -1
+      responses:
+        '201':
+          description: Waypoint inserted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightPlan'
+
+  /fms/route/waypoints/{waypoint_id}:
+    delete:
+      summary: Delete waypoint from active route
+      operationId: deleteWaypoint
+      tags: [Flight Management]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: waypoint_id
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 8
+      responses:
+        '200':
+          description: Updated route
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlightPlan'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /fms/performance:
+    get:
+      summary: Get FMS performance data
+      operationId: getPerformance
+      tags: [Flight Management]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Performance calculations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerformanceData'
+
+  /fms/performance/cruise:
+    put:
+      summary: Update cruise performance parameters
+      operationId: updateCruisePerf
+      tags: [Flight Management]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cost_index:
+                  type: integer
+                  minimum: 0
+                  maximum: 999
+                cruise_mach:
+                  type: number
+                  minimum: 0.60
+                  maximum: 0.88
+                cruise_fl:
+                  type: integer
+                  minimum: 100
+                  maximum: 430
+      responses:
+        '200':
+          description: Updated performance data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerformanceData'
+
+  # ── ENGINE ─────────────────────────────────────────────
+  /engines:
+    get:
+      summary: Get all engine parameters
+      operationId: getEngines
+      tags: [Engine]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All engine data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  engines:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EngineData'
+
+  /engines/{engine_id}:
+    get:
+      summary: Get single engine parameters
+      operationId: getEngine
+      tags: [Engine]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: engine_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 4
+      responses:
+        '200':
+          description: Engine data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EngineData'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /engines/{engine_id}/thrust:
+    post:
+      summary: Command thrust rating (FADEC interface)
+      operationId: commandThrust
+      tags: [Engine]
+      security:
+        - bearerAuth: [fadec_write]
+      parameters:
+        - name: engine_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 4
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [thrust_rating]
+              properties:
+                thrust_rating:
+                  type: string
+                  enum: [TOGA, FLEX, MCT, CLB, CRZ, IDLE, REVERSE]
+                  description: Requested thrust rating
+                flex_temp:
+                  type: number
+                  description: Flex temperature (°C) if rating is FLEX
+                  minimum: 30
+                  maximum: 70
+      responses:
+        '200':
+          description: FADEC accepted command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EngineData'
+        '409':
+          description: FADEC rejected command (operating limits)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── NAVIGATION ─────────────────────────────────────────
+  /navigation/position:
+    get:
+      summary: Get current IRS/GPS position
+      operationId: getPosition
+      tags: [Navigation]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current position from all sources
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NavigationPosition'
+
+  /navigation/irs:
+    get:
+      summary: IRS alignment status and drift data
+      operationId: getIRSStatus
+      tags: [Navigation]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: IRS data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IRSData'
+
+  /navigation/ils:
+    get:
+      summary: Get ILS raw deviation data
+      operationId: getILS
+      tags: [Navigation]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ILS localizer and glideslope data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ILSData'
+
+  /navigation/tcas:
+    get:
+      summary: Get TCAS traffic picture
+      operationId: getTCAS
+      tags: [Navigation]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: TCAS targets and RA status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TCASData'
+
+  # ── SYSTEMS ────────────────────────────────────────────
+  /systems:
+    get:
+      summary: Get all systems status
+      operationId: getSystems
+      tags: [Systems]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All aircraft systems status
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/SystemStatus'
+
+  /systems/{system_id}:
+    get:
+      summary: Get individual system status
+      operationId: getSystem
+      tags: [Systems]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: system_id
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - electrical
+              - hydraulic_a
+              - hydraulic_b
+              - pneumatic
+              - pressurization
+              - fuel
+              - anti_ice
+              - bleed_air
+              - apu
+              - doors
+              - landing_gear
+              - flight_controls
+              - oxygen
+              - fire
+              - ecs
+      responses:
+        '200':
+          description: System status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStatus'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /systems/{system_id}/command:
+    post:
+      summary: Issue system control command
+      operationId: commandSystem
+      tags: [Systems]
+      security:
+        - bearerAuth: [systems_write]
+      parameters:
+        - name: system_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [command]
+              properties:
+                command:
+                  type: string
+                  description: System-specific command verb
+                  example: RESET
+                parameters:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Command accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStatus'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Command refused by system logic
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── COMMUNICATIONS ─────────────────────────────────────
+  /comms/vhf:
+    get:
+      summary: Get VHF radio state
+      operationId: getVHF
+      tags: [Communications]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All VHF radio states
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RadioState'
+
+  /comms/vhf/{radio_id}/frequency:
+    put:
+      summary: Set active or standby frequency
+      operationId: setFrequency
+      tags: [Communications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: radio_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active_mhz:
+                  type: number
+                  description: Active frequency in MHz
+                  minimum: 118.000
+                  maximum: 136.975
+                standby_mhz:
+                  type: number
+                  minimum: 118.000
+                  maximum: 136.975
+      responses:
+        '200':
+          description: Updated radio state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RadioState'
+
+  /comms/transponder:
+    get:
+      summary: Get transponder state
+      operationId: getTransponder
+      tags: [Communications]
+      responses:
+        '200':
+          description: Transponder state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransponderState'
+    patch:
+      summary: Update transponder
+      operationId: setTransponder
+      tags: [Communications]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                squawk:
+                  type: string
+                  pattern: '^[0-7]{4}$'
+                  description: Octal squawk code
+                mode:
+                  type: string
+                  enum: [OFF, STBY, ON, ALT, TA, TA_RA]
+                ident:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated transponder
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransponderState'
+
+  # ── ALERTS ─────────────────────────────────────────────
+  /alerts:
+    get:
+      summary: Get all active cautions and warnings
+      operationId: getAlerts
+      tags: [Alerts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [WARNING, CAUTION, ADVISORY, ALL]
+            default: ALL
+        - name: acknowledged
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Active alert list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  master_warning:
+                    type: boolean
+                  master_caution:
+                    type: boolean
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Alert'
+
+  /alerts/{alert_id}/acknowledge:
+    post:
+      summary: Acknowledge an alert
+      operationId: acknowledgeAlert
+      tags: [Alerts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: alert_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                crew_id:
+                  type: string
+      responses:
+        '200':
+          description: Alert acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── HEALTH ─────────────────────────────────────────────
+  /health:
+    get:
+      summary: System health check
+      operationId: healthCheck
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: All systems nominal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReport'
+        '503':
+          description: Degraded operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReport'
+
+  /health/diagnostics:
+    get:
+      summary: Full diagnostic report
+      operationId: getDiagnostics
+      tags: [Health]
+      security:
+        - bearerAuth: [admin]
+      responses:
+        '200':
+          description: Detailed diagnostics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticsReport'
+
+# ─────────────────────────────────────────────────────────
+# COMPONENTS
+# ─────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token from AeroSys Identity Service.
+        Scopes embedded in token claims.
+        fadec_write and systems_write require elevated privilege tokens.
+
+  parameters:
+    FlightIdQuery:
+      name: flight_id
+      in: query
+      description: Flight identifier (defaults to current active flight)
+      schema:
+        type: string
+        maxLength: 8
+        example: AS2847
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Insufficient privilege level
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    DataBusError:
+      description: Avionics data bus unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    # ── Core ───────────────────────────────────────────
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: ATTITUDE_LIMIT
+        message:
+          type: string
+          example: Aircraft attitude exceeds autopilot engagement limits
+        details:
+          type: object
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+
+    # ── Telemetry ──────────────────────────────────────
+    TelemetrySnapshot:
+      type: object
+      required: [timestamp, flight_id, attitude, speeds, position]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        flight_id:
+          type: string
+        attitude:
+          $ref: '#/components/schemas/Attitude'
+        speeds:
+          $ref: '#/components/schemas/Speeds'
+        position:
+          $ref: '#/components/schemas/Position'
+        acceleration:
+          $ref: '#/components/schemas/Acceleration'
+
+    Attitude:
+      type: object
+      required: [pitch_deg, roll_deg, yaw_deg]
+      properties:
+        pitch_deg:
+          type: number
+          minimum: -90.0
+          maximum: 90.0
+          description: Pitch angle, positive nose-up
+        roll_deg:
+          type: number
+          minimum: -180.0
+          maximum: 180.0
+          description: Roll angle, positive right wing down
+        yaw_deg:
+          type: number
+          minimum: -180.0
+          maximum: 180.0
+        pitch_rate:
+          type: number
+          description: Pitch rate deg/sec
+        roll_rate:
+          type: number
+          description: Roll rate deg/sec
+        yaw_rate:
+          type: number
+
+    Speeds:
+      type: object
+      properties:
+        ias_kt:
+          type: number
+          minimum: 0
+          description: Indicated airspeed knots
+        cas_kt:
+          type: number
+          description: Calibrated airspeed knots
+        tas_kt:
+          type: number
+          description: True airspeed knots
+        gs_kt:
+          type: number
+          description: Ground speed knots
+        mach:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          description: Mach number
+        vmo_kt:
+          type: number
+          description: Maximum operating speed knots
+        mmo:
+          type: number
+          description: Maximum operating Mach
+
+    Position:
+      type: object
+      required: [latitude, longitude, altitude_ft]
+      properties:
+        latitude:
+          type: number
+          minimum: -90.0
+          maximum: 90.0
+          description: WGS84 latitude degrees
+        longitude:
+          type: number
+          minimum: -180.0
+          maximum: 180.0
+          description: WGS84 longitude degrees
+        altitude_ft:
+          type: number
+          description: Pressure altitude in feet
+        flight_level:
+          type: integer
+          description: Flight level (altitude_ft / 100)
+        vs_fpm:
+          type: integer
+          description: Vertical speed feet per minute
+        track_deg:
+          type: number
+          description: True track over ground
+        heading_mag:
+          type: number
+          description: Magnetic heading
+
+    Acceleration:
+      type: object
+      properties:
+        normal_g:
+          type: number
+          description: Normal (vertical) load factor in G
+        lateral_g:
+          type: number
+        longitudinal_g:
+          type: number
+
+    # ── Autopilot ──────────────────────────────────────
+    AutopilotState:
+      type: object
+      properties:
+        engaged:
+          type: boolean
+        fd_on:
+          type: boolean
+          description: Flight director active
+        autothrust_engaged:
+          type: boolean
+        lateral_mode:
+          type: string
+          enum: [LNAV, HDG_SEL, HDG_HOLD, LOC, ROLLOUT, OFF]
+        vertical_mode:
+          type: string
+          enum: [VNAV_ALT, VNAV_PTH, VNAV_SPD, FLCH, ALT_HOLD, VS, GS, FLARE, OFF]
+        speed_mode:
+          type: string
+          enum: [MACH, IAS, RETARD, OFF]
+        targets:
+          $ref: '#/components/schemas/AutopilotTargets'
+        limits:
+          type: object
+          properties:
+            max_bank_deg:
+              type: number
+            max_pitch_deg:
+              type: number
+            alt_capture_ft:
+              type: integer
+
+    AutopilotModeCommand:
+      type: object
+      properties:
+        lateral_mode:
+          type: string
+          enum: [LNAV, HDG_SEL, HDG_HOLD, LOC, OFF]
+        vertical_mode:
+          type: string
+          enum: [VNAV, FLCH, ALT_HOLD, VS, APPR, OFF]
+        speed_mode:
+          type: string
+          enum: [MACH, IAS, OFF]
+
+    AutopilotTargets:
+      type: object
+      properties:
+        target_speed_kt:
+          type: integer
+          minimum: 100
+          maximum: 350
+        target_mach:
+          type: number
+          minimum: 0.60
+          maximum: 0.88
+        target_heading_deg:
+          type: integer
+          minimum: 0
+          maximum: 360
+        target_altitude_ft:
+          type: integer
+          minimum: 0
+          maximum: 45000
+        target_vs_fpm:
+          type: integer
+          minimum: -8000
+          maximum: 8000
+        target_flight_path_angle:
+          type: number
+          minimum: -10.0
+          maximum: 10.0
+
+    # ── Flight Plan ────────────────────────────────────
+    Waypoint:
+      type: object
+      required: [identifier]
+      properties:
+        identifier:
+          type: string
+          maxLength: 8
+          description: ICAO waypoint/fix identifier
+          example: JANJO
+        latitude:
+          type: number
+        longitude:
+          type: number
+        type:
+          type: string
+          enum: [FIX, VOR, NDB, AIRPORT, RUNWAY, SID, STAR, APPROACH, MANUAL]
+        altitude_constraint:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [AT, AT_OR_ABOVE, AT_OR_BELOW, BETWEEN, NONE]
+            altitude_ft:
+              type: integer
+            altitude2_ft:
+              type: integer
+        speed_constraint:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [AT, AT_OR_BELOW, NONE]
+            speed_kt:
+              type: integer
+        eta:
+          type: string
+          format: date-time
+        dist_to_go_nm:
+          type: number
+        overfly:
+          type: boolean
+          default: false
+
+    FlightPlan:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        flight_id:
+          type: string
+        origin:
+          type: string
+          example: KJFK
+        destination:
+          type: string
+          example: EGLL
+        alternate:
+          type: string
+        waypoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/Waypoint'
+        active_leg:
+          type: integer
+        total_distance_nm:
+          type: number
+        eta_destination:
+          type: string
+          format: date-time
+        modified_at:
+          type: string
+          format: date-time
+
+    FlightPlanInput:
+      type: object
+      required: [origin, destination, waypoints]
+      properties:
+        origin:
+          type: string
+          description: ICAO origin airport
+        destination:
+          type: string
+        alternate:
+          type: string
+        waypoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/Waypoint'
+        sid:
+          type: string
+          description: SID identifier
+        star:
+          type: string
+          description: STAR identifier
+        approach:
+          type: string
+
+    RouteValidationError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        invalid_fixes:
+          type: array
+          items:
+            type: string
+        airspace_conflicts:
+          type: array
+          items:
+            type: string
+
+    PerformanceData:
+      type: object
+      properties:
+        cost_index:
+          type: integer
+        gross_weight_lb:
+          type: number
+        fuel_on_board_lb:
+          type: number
+        cruise_mach:
+          type: number
+        optimal_fl:
+          type: integer
+        max_fl:
+          type: integer
+        step_climb_points:
+          type: array
+          items:
+            type: object
+            properties:
+              waypoint:
+                type: string
+              from_fl:
+                type: integer
+              to_fl:
+                type: integer
+        efob_destination:
+          type: number
+          description: Estimated fuel on board at destination (lb)
+        efob_alternate:
+          type: number
+        trip_fuel_lb:
+          type: number
+        contingency_fuel_lb:
+          type: number
+        isa_deviation:
+          type: number
+
+    # ── Engine ─────────────────────────────────────────
+    EngineData:
+      type: object
+      properties:
+        engine_id:
+          type: integer
+        type:
+          type: string
+          example: CFM56-5B4/P
+        status:
+          type: string
+          enum: [RUNNING, STARTING, SHUTTING_DOWN, OFF, FIRE, FAULT]
+        n1_pct:
+          type: number
+          minimum: 0
+          maximum: 110
+          description: Fan speed as % of N1 red line
+        n2_pct:
+          type: number
+          description: Core speed as % N2
+        egt_c:
+          type: integer
+          description: Exhaust gas temperature in Celsius
+        ff_kg_h:
+          type: number
+          description: Fuel flow kg per hour
+        oil_pressure_psi:
+          type: number
+        oil_temp_c:
+          type: number
+        vibration:
+          type: number
+          description: N1 vibration in inches per second
+        thrust_rating:
+          type: string
+          enum: [TOGA, FLEX, MCT, CLB, CRZ, IDLE, REVERSE]
+        epr:
+          type: number
+          description: Engine pressure ratio
+        reverse_deployed:
+          type: boolean
+
+    # ── Navigation ─────────────────────────────────────
+    NavigationPosition:
+      type: object
+      properties:
+        blended_latitude:
+          type: number
+        blended_longitude:
+          type: number
+        gps_latitude:
+          type: number
+        gps_longitude:
+          type: number
+        gps_accuracy_nm:
+          type: number
+        irs1_latitude:
+          type: number
+        irs1_longitude:
+          type: number
+        irs2_latitude:
+          type: number
+        irs2_longitude:
+          type: number
+        source:
+          type: string
+          enum: [GPS, IRS, MIXED, RADIO]
+        position_uncertainty_nm:
+          type: number
+
+    IRSData:
+      type: object
+      properties:
+        irs_id:
+          type: integer
+        mode:
+          type: string
+          enum: [OFF, ALIGN, NAV, ATT]
+        align_time_remaining_sec:
+          type: integer
+        drift_nm_per_hour:
+          type: number
+        heading_accuracy_deg:
+          type: number
+        attitude_valid:
+          type: boolean
+        nav_valid:
+          type: boolean
+
+    ILSData:
+      type: object
+      properties:
+        frequency_mhz:
+          type: number
+        identifier:
+          type: string
+        localizer_dev_dots:
+          type: number
+          minimum: -2.5
+          maximum: 2.5
+          description: Localizer deviation in dots (neg=left, pos=right)
+        glideslope_dev_dots:
+          type: number
+          minimum: -2.5
+          maximum: 2.5
+          description: Glideslope deviation in dots (neg=below, pos=above)
+        dme_nm:
+          type: number
+        localizer_captured:
+          type: boolean
+        glideslope_captured:
+          type: boolean
+        back_course:
+          type: boolean
+
+    TCASTarget:
+      type: object
+      properties:
+        id:
+          type: string
+        callsign:
+          type: string
+        squawk:
+          type: string
+        relative_alt_ft:
+          type: integer
+          description: Relative altitude vs own aircraft
+        bearing_deg:
+          type: number
+        distance_nm:
+          type: number
+        vs_fpm:
+          type: integer
+        threat_level:
+          type: string
+          enum: [PROXIMATE, TA, RA, INTRUDER]
+
+    TCASData:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [STBY, TA, TA_RA]
+        ra_active:
+          type: boolean
+        ra_sense:
+          type: string
+          enum: [NONE, CLIMB, DESCEND, MAINTAIN]
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TCASTarget'
+
+    # ── Systems ────────────────────────────────────────
+    SystemStatus:
+      type: object
+      properties:
+        system_id:
+          type: string
+        display_name:
+          type: string
+        status:
+          type: string
+          enum: [NORMAL, ADVISORY, CAUTION, WARNING, FAULT, OFF, UNKNOWN]
+        parameters:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: number
+              - type: string
+              - type: boolean
+        last_updated:
+          type: string
+          format: date-time
+
+    # ── Communications ─────────────────────────────────
+    RadioState:
+      type: object
+      properties:
+        radio_id:
+          type: integer
+        active_mhz:
+          type: number
+        standby_mhz:
+          type: number
+        tx:
+          type: boolean
+        rx:
+          type: boolean
+        squelch:
+          type: boolean
+
+    TransponderState:
+      type: object
+      properties:
+        squawk:
+          type: string
+          pattern: '^[0-7]{4}$'
+        mode:
+          type: string
+          enum: [OFF, STBY, ON, ALT, TA, TA_RA]
+        ident:
+          type: boolean
+        flight_id:
+          type: string
+        altitude_reported:
+          type: integer
+
+    # ── Alerts ─────────────────────────────────────────
+    Alert:
+      type: object
+      required: [id, severity, message]
+      properties:
+        id:
+          type: string
+        severity:
+          type: string
+          enum: [WARNING, CAUTION, ADVISORY]
+        category:
+          type: string
+          enum: [ENGINE, FUEL, HYDRAULIC, ELECTRICAL, PRESSURIZATION, FIRE, NAVIGATION, AUTOPILOT, FLIGHT_CONTROLS, OTHER]
+        message:
+          type: string
+          example: APU FAULT
+        system_id:
+          type: string
+        triggered_at:
+          type: string
+          format: date-time
+        acknowledged:
+          type: boolean
+        acknowledged_by:
+          type: string
+        inhibited:
+          type: boolean
+
+    # ── Health ─────────────────────────────────────────
+    HealthReport:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [OK, DEGRADED, FAULT]
+        version:
+          type: string
+          example: "2.1.0"
+        uptime_sec:
+          type: integer
+        arinc_bus_ok:
+          type: boolean
+        data_bus_latency_ms:
+          type: number
+        active_alerts:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    DiagnosticsReport:
+      type: object
+      properties:
+        health:
+          $ref: '#/components/schemas/HealthReport'
+        cpu_usage_pct:
+          type: number
+        memory_usage_pct:
+          type: number
+        storage_free_mb:
+          type: number
+        arinc_429_errors:
+          type: integer
+        arinc_629_errors:
+          type: integer
+        discretes:
+          type: object
+          additionalProperties:
+            type: boolean
+        last_reboot:
+          type: string
+          format: date-time
+        software_part_numbers:
+          type: object
+          additionalProperties:
+            type: string
+
+security:
+  - bearerAuth: []
