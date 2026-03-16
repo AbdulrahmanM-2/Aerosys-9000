@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "name": "aerosys-9000-v4",
+  "outputDirectory": "public",
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/v2/aircraft",          "destination": "/api/aircraft" },
+    { "source": "/api/v2/bus/snapshot",      "destination": "/api/bus-snapshot" },
+    { "source": "/api/v2/bus/labels",        "destination": "/api/bus-labels" },
+    { "source": "/api/v2/telemetry/stream",  "destination": "/api/telemetry-stream" },
+    { "source": "/api/v2/telemetry",         "destination": "/api/telemetry" },
+    { "source": "/api/v2/autopilot/engage",  "destination": "/api/autopilot-engage" },
+    { "source": "/api/v2/autopilot/modes",   "destination": "/api/autopilot-modes" },
+    { "source": "/api/v2/autopilot/targets", "destination": "/api/autopilot-targets" },
+    { "source": "/api/v2/autopilot",         "destination": "/api/autopilot" },
+    { "source": "/api/v2/engines",           "destination": "/api/engines" },
+    { "source": "/api/v2/fms/performance",   "destination": "/api/fms-performance" },
+    { "source": "/api/v2/fms/route",         "destination": "/api/fms-route" },
+    { "source": "/api/v2/navigation/position","destination": "/api/nav-position" },
+    { "source": "/api/v2/navigation/tcas",   "destination": "/api/nav-tcas" },
+    { "source": "/api/v2/navigation/ils",    "destination": "/api/nav-ils" },
+    { "source": "/api/v2/systems",           "destination": "/api/systems" },
+    { "source": "/api/v2/comms/transponder", "destination": "/api/comms-transponder" },
+    { "source": "/api/v2/comms/vhf",         "destination": "/api/comms-vhf" },
+    { "source": "/api/v2/alerts",            "destination": "/api/alerts" },
+    { "source": "/api/v2/health",            "destination": "/api/health" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin",  "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, PATCH, DELETE, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Authorization, Content-Type" },
+        { "key": "X-AeroSys-Version",            "value": "4.0.0" },
+        { "key": "X-AeroSys-Revision",           "value": "multi-type+arinc429" }
+      ]
+    }
+  ],
+  "env": {
+    "AEROSYS_VERSION":     "4.0.0",
+    "AEROSYS_ENV":         "production",
+    "AEROSYS_ARINC_STD":  "ARINC_429_Part1_Rev17"
+  }
+}

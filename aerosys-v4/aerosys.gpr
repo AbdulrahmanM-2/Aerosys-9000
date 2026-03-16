@@ -1,0 +1,38 @@
+------------------------------------------------------------------------------
+--  aerosys.gpr — AeroSys 9000 v4.0.0 GNAT Project
+--  New packages: ARINC429, Aircraft, Bus
+--  Build: gprbuild -P aerosys.gpr -Xmode=release -j0
+------------------------------------------------------------------------------
+
+project AeroSys is
+
+   type Build_Mode_Type is ("debug", "release", "coverage");
+   Mode : Build_Mode_Type := external ("mode", "release");
+
+   for Source_Dirs  use ("src");
+   for Object_Dir   use "obj/" & Mode;
+   for Exec_Dir     use "bin";
+   for Main         use ("main.adb");
+
+   Common_Flags := (
+      "-gnat2022", "-gnato", "-gnatwa", "-gnatVa",
+      "-fstack-check", "-gnateE", "-gnatwe");
+
+   Release_Flags := Common_Flags & ("-O2", "-gnatn", "-fomit-frame-pointer");
+   Debug_Flags   := Common_Flags & ("-g", "-O0", "-fno-inline", "-gnata");
+   Cover_Flags   := Debug_Flags  & ("--coverage", "-fprofile-arcs", "-ftest-coverage");
+
+   package Compiler is
+      case Mode is
+         when "release"  => for Default_Switches ("Ada") use Release_Flags;
+         when "debug"    => for Default_Switches ("Ada") use Debug_Flags;
+         when "coverage" => for Default_Switches ("Ada") use Cover_Flags;
+      end case;
+   end Compiler;
+
+   package Builder is
+      for Default_Switches ("Ada") use ("-j0");
+      for Executable ("main.adb")  use "aerosys_api";
+   end Builder;
+
+end AeroSys;
