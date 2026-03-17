@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AeroSys 9000 — ARINC 429 Bus Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg0:#01040a;--bg1:#03060f;--bg2:#050c1a;--bg3:#091220;
+  --g:#00e676;--c:#00e5ff;--a:#ffab00;--r:#ff1744;--b:#448aff;--p:#b06aff;--y:#ffff00;
+  --w:#e4f0fb;--gr:#3a5060;--gr2:#5a7080;--bdr:rgba(0,229,255,0.1);
+  --sG:0 0 10px rgba(0,230,118,.55);--sC:0 0 10px rgba(0,229,255,.55);
+  --mono:'Share Tech Mono',monospace;--hud:'Orbitron',sans-serif;--ui:'Rajdhani',sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:var(--bg0);color:var(--w);font-family:var(--ui);overflow:hidden}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.016) 3px,rgba(0,0,0,.016) 4px);pointer-events:none;z-index:9999}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* NAV */
+nav{height:48px;background:rgba(1,4,10,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;padding:0 22px;gap:0;flex-shrink:0;position:relative;z-index:100}
+.brand{font-family:var(--hud);font-size:11px;letter-spacing:2.5px;color:var(--c);
+  display:flex;align-items:center;gap:8px;margin-right:24px}
+.bd{width:6px;height:6px;border-radius:50%;background:var(--g);box-shadow:var(--sG);animation:pulse 2s ease-in-out infinite}
+.nl{font-family:var(--hud);font-size:8px;letter-spacing:1.5px;color:var(--gr2);padding:0 13px;
+  display:flex;align-items:center;border-right:1px solid var(--bdr);cursor:pointer;
+  transition:all .2s;text-decoration:none;height:100%}
+.nl:hover{color:var(--c);background:rgba(0,229,255,.04)}
+.nl.act{color:var(--c)}
+.nav-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.nb{font-family:var(--mono);font-size:9px;padding:3px 9px;border-radius:3px}
+.nbg{background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.28);color:var(--g)}
+.nbc{background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.28);color:var(--c)}
+#nclk{font-family:var(--hud);font-size:11px;color:var(--c);margin-left:6px}
+
+/* TOOLBAR */
+.toolbar{height:44px;background:var(--bg2);border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;padding:0 20px;gap:14px;flex-shrink:0}
+.tb-label{font-family:var(--hud);font-size:7px;letter-spacing:2px;color:var(--gr)}
+.tb-select{background:rgba(0,0,0,.5);border:1px solid var(--bdr);border-radius:3px;
+  padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--w);outline:none;
+  cursor:pointer;transition:border-color .2s}
+.tb-select:focus{border-color:var(--c)}
+.tb-btn{font-family:var(--hud);font-size:7px;letter-spacing:1.5px;padding:5px 14px;
+  border-radius:3px;cursor:pointer;transition:all .2s;border:1px solid}
+.tb-btn-c{background:rgba(0,229,255,.08);border-color:rgba(0,229,255,.3);color:var(--c)}
+.tb-btn-c:hover{background:rgba(0,229,255,.18)}
+.tb-btn-g{background:rgba(0,230,118,.08);border-color:rgba(0,230,118,.3);color:var(--g)}
+.tb-btn-r{background:rgba(255,23,68,.08);border-color:rgba(255,23,68,.3);color:var(--r)}
+.tb-sep{width:1px;height:24px;background:var(--bdr)}
+.tb-stat{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;color:var(--gr2)}
+.tb-stat .v{color:var(--g)}
+.paused-badge{font-family:var(--hud);font-size:8px;padding:3px 10px;border-radius:3px;
+  background:rgba(255,171,0,.12);border:1px solid rgba(255,171,0,.35);color:var(--a);
+  display:none}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:220px 1fr 320px;height:calc(100vh - 92px);gap:0}
+
+/* CHANNEL PANEL */
+.ch-panel{background:var(--bg2);border-right:1px solid var(--bdr);overflow-y:auto;display:flex;flex-direction:column}
+.ch-panel::-webkit-scrollbar{width:4px}
+.ch-panel::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+.ch-hdr{padding:10px 14px 6px;border-bottom:1px solid var(--bdr);
+  font-family:var(--hud);font-size:7.5px;letter-spacing:2px;color:var(--c);background:rgba(0,0,0,.2)}
+.ch-grp{font-family:var(--hud);font-size:7px;letter-spacing:2px;color:var(--gr);padding:8px 12px 3px}
+.ch-row{display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;
+  font-family:var(--mono);font-size:10px;color:rgba(200,220,240,.5);transition:all .15s;
+  border-left:2px solid transparent}
+.ch-row:hover{background:rgba(0,229,255,.04);color:var(--w)}
+.ch-row.sel{background:rgba(0,229,255,.07);color:var(--c);border-left-color:var(--c)}
+.ch-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ch-dot.active{animation:pulse 1.4s ease-in-out infinite}
+.ch-wc{margin-left:auto;font-family:var(--hud);font-size:7px;color:var(--gr)}
+
+/* WORD TABLE */
+.word-table-wrap{display:flex;flex-direction:column;overflow:hidden;background:var(--bg1)}
+.wt-header{background:var(--bg3);border-bottom:1px solid var(--bdr);
+  display:grid;grid-template-columns:90px 60px 70px 100px 80px 80px 60px 1fr;
+  padding:6px 14px;font-family:var(--hud);font-size:7px;letter-spacing:1px;color:var(--gr);flex-shrink:0}
+.wt-body{flex:1;overflow-y:auto}
+.wt-body::-webkit-scrollbar{width:5px}
+.wt-body::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+.word-row{display:grid;grid-template-columns:90px 60px 70px 100px 80px 80px 60px 1fr;
+  padding:5px 14px;border-bottom:1px solid rgba(255,255,255,.03);
+  font-family:var(--mono);font-size:10px;align-items:center;transition:background .1s;cursor:default}
+.word-row:hover{background:rgba(0,229,255,.04)}
+.word-row.fresh{animation:fresh .8s ease}
+@keyframes fresh{from{background:rgba(0,229,255,.15)}to{background:transparent}}
+.wl{color:var(--c)}.wlo{color:rgba(0,229,255,.55);font-size:9px}
+.wraw{color:var(--gr2);font-size:9px;letter-spacing:.5px}
+.wval{font-weight:700}
+.wval.ok{color:var(--g)}.wval.warn{color:var(--a)}.wval.err{color:var(--r)}
+.wssm{font-family:var(--hud);font-size:7px;padding:1px 5px;border-radius:2px}
+.ssm-norm{background:rgba(0,230,118,.1);color:var(--g)}
+.ssm-ncd{background:rgba(255,171,0,.1);color:var(--a)}
+.ssm-fw{background:rgba(255,23,68,.1);color:var(--r)}
+.wsdi{color:var(--gr2);font-size:9px}
+.wpar{font-family:var(--hud);font-size:7px;padding:1px 5px;border-radius:2px}
+.par-ok{background:rgba(0,230,118,.08);color:var(--g)}
+.par-err{background:rgba(255,23,68,.08);color:var(--r)}
+.wname{color:var(--gr2);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* AIRCRAFT PANEL */
+.ac-panel{background:var(--bg2);border-left:1px solid var(--bdr);overflow-y:auto;display:flex;flex-direction:column}
+.ac-panel::-webkit-scrollbar{width:4px}
+.ac-panel::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+.ac-hdr{padding:10px 14px 6px;border-bottom:1px solid var(--bdr);
+  font-family:var(--hud);font-size:7.5px;letter-spacing:2px;color:var(--c);background:rgba(0,0,0,.2)}
+.ac-card{margin:10px;background:rgba(0,0,0,.25);border:1px solid var(--bdr);border-radius:5px;padding:12px}
+.ac-name{font-family:var(--hud);font-size:10px;color:var(--w);letter-spacing:1.5px;margin-bottom:10px;
+  display:flex;align-items:center;gap:8px}
+.ac-active-dot{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:var(--sG);animation:pulse 1.5s ease-in-out infinite}
+.ac-row{display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px}
+.ac-k{font-family:var(--hud);font-size:7px;color:var(--gr);letter-spacing:1px}
+.ac-v{font-family:var(--mono);font-size:10px}
+.ac-sep{border:none;border-top:1px solid rgba(255,255,255,.06);margin:8px 0}
+.ac-type-sel{margin:10px}
+.ac-type-title{font-family:var(--hud);font-size:7px;letter-spacing:2px;color:var(--gr);margin-bottom:6px}
+.ac-type-btn{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:3px;
+  font-family:var(--mono);font-size:10px;cursor:pointer;transition:all .2s;margin-bottom:4px;
+  border:1px solid var(--bdr);color:var(--gr2);background:rgba(255,255,255,.02)}
+.ac-type-btn:hover{background:rgba(0,229,255,.06);color:var(--w);border-color:rgba(0,229,255,.2)}
+.ac-type-btn.active{background:rgba(0,229,255,.08);color:var(--c);border-color:rgba(0,229,255,.3)}
+.ac-icao{font-family:var(--hud);font-size:8px;padding:2px 7px;border-radius:2px;flex-shrink:0;width:42px;text-align:center}
+.ic-a3{background:rgba(0,229,255,.1);color:var(--c);border:1px solid rgba(0,229,255,.25)}
+.ic-b7{background:rgba(68,138,255,.1);color:var(--b);border:1px solid rgba(68,138,255,.25)}
+.ic-a3w{background:rgba(176,106,255,.1);color:var(--p);border:1px solid rgba(176,106,255,.25)}
+.ac-eng-badge{font-family:var(--hud);font-size:7px;padding:2px 6px;border-radius:2px;
+  background:rgba(255,171,0,.08);border:1px solid rgba(255,171,0,.25);color:var(--a);margin-left:auto}
+
+/* STATUS BAR */
+.statusbar{height:22px;background:rgba(0,0,0,.4);border-top:1px solid var(--bdr);
+  display:flex;align-items:center;padding:0 16px;gap:14px;position:relative;z-index:10;flex-shrink:0}
+.sb-item{font-family:var(--mono);font-size:9px;color:var(--gr);display:flex;align-items:center;gap:4px}
+.sb-item .v{color:var(--c)}
+.sb-item .g{color:var(--g)}
+.sb-item .e{color:var(--r)}
+
+.toast{position:fixed;bottom:30px;right:22px;background:var(--bg3);border:1px solid var(--bdr);
+  border-radius:4px;padding:10px 16px;font-family:var(--hud);font-size:9px;color:var(--c);
+  z-index:9998;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+<nav>
+  <div class="brand"><div class="bd"></div>AEROSYS 9000</div>
+  <a class="nl" href="/">PLATFORM</a>
+  <a class="nl" href="cockpit.html">COCKPIT</a>
+  <a class="nl" href="explorer.html">API</a>
+  <a class="nl" href="source.html">ADA SOURCE</a>
+  <a class="nl act" href="bus-monitor.html">BUS MONITOR</a>
+  <div class="nav-r">
+    <span class="nb nbg" id="nb-ac">A320 / CFM56-5B</span>
+    <span class="nb nbc" id="nb-wps">0 words/s</span>
+    <span id="nclk">00:00:00Z</span>
+  </div>
+</nav>
+
+<div class="toolbar">
+  <span class="tb-label">CHANNEL</span>
+  <select class="tb-select" id="ch-sel" onchange="selectChannel(this.value)">
+    <option value="FADEC_1">FADEC ENG 1</option>
+    <option value="FADEC_2">FADEC ENG 2</option>
+    <option value="ADC_1">ADC 1</option>
+    <option value="ADC_2">ADC 2</option>
+    <option value="IRS_1">IRS 1</option>
+    <option value="IRS_2">IRS 2</option>
+    <option value="IRS_3">IRS 3</option>
+    <option value="FMS_1">FMS 1</option>
+    <option value="AFCS_1">AFCS 1</option>
+    <option value="HYD">HYDRAULIC</option>
+    <option value="PRESS">PRESSURISATION</option>
+    <option value="FUEL">FUEL QUANTITY</option>
+    <option value="COMMS">COMMS / XPDR</option>
+    <option value="TCAS">TCAS</option>
+    <option value="ILS_MMR">ILS / MMR</option>
+  </select>
+  <div class="tb-sep"></div>
+  <span class="tb-label">FILTER</span>
+  <select class="tb-select" id="fmt-filter" onchange="applyFilter()">
+    <option value="">All formats</option>
+    <option value="BNR">BNR only</option>
+    <option value="DIS">DIS only</option>
+    <option value="BCD">BCD only</option>
+  </select>
+  <div class="tb-sep"></div>
+  <button class="tb-btn tb-btn-c" onclick="togglePause()" id="pause-btn">⏸ PAUSE</button>
+  <button class="tb-btn tb-btn-g" onclick="clearLog()">🗑 CLEAR</button>
+  <div class="paused-badge" id="paused-badge">● PAUSED</div>
+  <div class="tb-sep"></div>
+  <div class="tb-stat">WORDS <span class="v" id="tb-wc">0</span></div>
+  <div class="tb-stat">ERRORS <span id="tb-ec" style="color:var(--g)">0</span></div>
+  <div class="tb-stat">RATE <span class="v" id="tb-rate">100 kbps</span></div>
+  <div class="tb-stat" style="margin-left:auto">BUS SPEED <span class="v">100 kbps HIGH</span></div>
+</div>
+
+<div class="layout">
+  <!-- CHANNEL SIDEBAR -->
+  <div class="ch-panel">
+    <div class="ch-hdr">◈ BUS CHANNELS</div>
+    <div id="ch-list"></div>
+  </div>
+
+  <!-- WORD TABLE -->
+  <div class="word-table-wrap">
+    <div class="wt-header">
+      <span>LABEL</span><span>SDI</span><span>RAW (HEX)</span>
+      <span>DECODED VALUE</span><span>UNIT</span><span>SSM</span>
+      <span>PARITY</span><span>LABEL NAME</span>
+    </div>
+    <div class="wt-body" id="word-table"></div>
+  </div>
+
+  <!-- AIRCRAFT PROFILE PANEL -->
+  <div class="ac-panel">
+    <div class="ac-hdr">◈ AIRCRAFT PROFILE</div>
+    <div id="ac-detail"></div>
+    <div class="ac-type-sel">
+      <div class="ac-type-title">SWITCH AIRCRAFT TYPE</div>
+      <div id="ac-type-list"></div>
+    </div>
+  </div>
+</div>
+
+<div style="height:22px;background:rgba(0,0,0,.4);border-top:1px solid var(--bdr);display:flex;align-items:center;padding:0 16px;gap:14px;">
+  <div class="sb-item">CHANNEL <span class="v" id="sb-ch">FADEC_1</span></div>
+  <div class="sb-item">WORDS RECV <span class="v" id="sb-wr">0</span></div>
+  <div class="sb-item">PARITY ERR <span id="sb-pe" class="g">0</span></div>
+  <div class="sb-item">LAST RX <span class="v" id="sb-rx">—</span></div>
+  <div class="sb-item" style="margin-left:auto">ARINC 429 PART 1 REV 17</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════
+// INLINE ARINC 429 IMPLEMENTATION (no import)
+// ════════════════════════════════════════════════
+
+function revLbl(l){let i=l&0xFF,o=0;for(let n=0;n<8;n++){o=(o<<1)|(i&1);i>>=1}return o&0xFF}
+function oddParity(w){let n=0,x=w>>>0;while(x){n+=x&1;x=(x>>>1)>>>0}return(n%2)===1}
+
+function encodeBNR(v,res){
+  const r=Math.round(v/res),c=Math.max(-(1<<18),Math.min((1<<18)-1,r));
+  return c>=0?c:((1<<19)+c);
+}
+
+function encodeWord(lbl,sdi,data,ssm){
+  let w=(revLbl(lbl)&0xFF)|((sdi&3)<<8)|((data&0x7FFFF)<<10)|((ssm&3)<<29);
+  w=w>>>0;
+  if(!oddParity(w))w=(w|0x80000000)>>>0;
+  return w;
+}
+
+function fmtHex(n,len=8){return'0x'+((n>>>0).toString(16).toUpperCase().padStart(len,'0'))}
+
+const SSM_NORM=3,SSM_NCD=1,SSM_FW=0,SSM_PLUS=3,SSM_MINUS=1;
+
+function noise(t,f=1,a=1){return a*(Math.sin(t*f)*.5+Math.sin(t*f*1.7)*.3+Math.sin(t*f*2.9)*.2)}
+
+// ════════════════════════════════════════════════
+// AIRCRAFT PROFILES (local copy)
+// ════════════════════════════════════════════════
+
+const AC_TYPES = {
+  "A320":{ icao:"A320",name:"Airbus A320-214",    eng:"CFM56-5B4/P",  family:"A320",n1_cruise:84.6,egt_cruise:741, n1_max:100,egt_max:950, v_mo:350,m_mo:0.82,max_alt:39800,mtow:162040,range:3300,engines:2,bus_arch:"ARINC 429 (18 buses)",suite:"EIS2" },
+  "A20N":{ icao:"A20N",name:"Airbus A320neo CFM",  eng:"LEAP-1A26",    family:"A320",n1_cruise:83.8,egt_cruise:855, n1_max:100,egt_max:1040,v_mo:350,m_mo:0.82,max_alt:39800,mtow:174165,range:3500,engines:2,bus_arch:"ARINC 429 (18 buses)",suite:"EIS2 + OANS" },
+  "A321":{ icao:"A321",name:"Airbus A321-231",    eng:"CFM56-5B3/P",  family:"A320",n1_cruise:87.2,egt_cruise:762, n1_max:100,egt_max:950, v_mo:350,m_mo:0.82,max_alt:39800,mtow:196210,range:3200,engines:2,bus_arch:"ARINC 429 (18 buses)",suite:"EIS2" },
+  "B738":{ icao:"B738",name:"Boeing 737-800 NG",  eng:"CFM56-7B27",   family:"B737",n1_cruise:86.0,egt_cruise:780, n1_max:100,egt_max:950, v_mo:340,m_mo:0.82,max_alt:41000,mtow:174165,range:3060,engines:2,bus_arch:"ARINC 429 (16 buses)",suite:"Boeing NDS" },
+  "B38M":{ icao:"B38M",name:"Boeing 737 MAX 8",   eng:"LEAP-1B28",    family:"B737",n1_cruise:85.0,egt_cruise:870, n1_max:100,egt_max:1050,v_mo:340,m_mo:0.82,max_alt:41000,mtow:181897,range:3550,engines:2,bus_arch:"ARINC 429 (16 buses)",suite:"Boeing EFIS MAX + SVS" },
+  "A359":{ icao:"A359",name:"Airbus A350-900",    eng:"Trent XWB-84", family:"A350",n1_cruise:81.5,egt_cruise:920, n1_max:100,egt_max:1060,v_mo:375,m_mo:0.89,max_alt:43100,mtow:617295,range:8100,engines:2,bus_arch:"AFDX/664 + 24 × ARINC 429",suite:"A350 OANS + SVS" },
+  "A388":{ icao:"A388",name:"Airbus A380-800",    eng:"Trent 970B",   family:"A380",n1_cruise:80.0,egt_cruise:890, n1_max:100,egt_max:1055,v_mo:365,m_mo:0.89,max_alt:43000,mtow:1234589,range:8200,engines:4,bus_arch:"AFDX/664 + 32 × ARINC 429 (IMA)",suite:"A380 IMA + OANS + SVS" },
+};
+
+let activeAC = "A320";
+function icaoColor(icao){return icao.startsWith('A3')||icao==='A20N'||icao==='A21N'||icao==='A321'?'ic-a3':icao.startsWith('B3')?'ic-a3w':'ic-b7'}
+
+// ════════════════════════════════════════════════
+// BUS CHANNEL DEFINITIONS
+// ════════════════════════════════════════════════
+
+const CHANNELS = [
+  {id:"FADEC_1",  name:"FADEC Eng 1",   grp:"ENGINE",  color:"var(--a)",  dot:"background:var(--a)"},
+  {id:"FADEC_2",  name:"FADEC Eng 2",   grp:"ENGINE",  color:"var(--a)",  dot:"background:var(--a)"},
+  {id:"FADEC_3",  name:"FADEC Eng 3",   grp:"ENGINE",  color:"var(--a)",  dot:"background:rgba(255,171,0,.4)",note:"(A380/wide only)"},
+  {id:"FADEC_4",  name:"FADEC Eng 4",   grp:"ENGINE",  color:"var(--a)",  dot:"background:rgba(255,171,0,.4)",note:"(A380 only)"},
+  {id:"ADC_1",    name:"ADC 1",          grp:"AIR DATA",color:"var(--c)",  dot:"background:var(--c)"},
+  {id:"ADC_2",    name:"ADC 2",          grp:"AIR DATA",color:"var(--c)",  dot:"background:rgba(0,229,255,.45)"},
+  {id:"IRS_1",    name:"IRS 1",          grp:"INERTIAL",color:"var(--g)",  dot:"background:var(--g)"},
+  {id:"IRS_2",    name:"IRS 2",          grp:"INERTIAL",color:"var(--g)",  dot:"background:rgba(0,230,118,.45)"},
+  {id:"IRS_3",    name:"IRS 3",          grp:"INERTIAL",color:"var(--g)",  dot:"background:rgba(0,230,118,.3)"},
+  {id:"FMS_1",    name:"FMS / FMC 1",    grp:"FLIGHT MGT",color:"var(--b)",dot:"background:var(--b)"},
+  {id:"AFCS_1",   name:"AFCS / AP 1",    grp:"FLIGHT MGT",color:"var(--b)",dot:"background:rgba(68,138,255,.5)"},
+  {id:"HYD",      name:"Hydraulics",     grp:"SYSTEMS", color:"var(--p)",  dot:"background:var(--p)"},
+  {id:"PRESS",    name:"Pressurisation", grp:"SYSTEMS", color:"var(--p)",  dot:"background:rgba(176,106,255,.5)"},
+  {id:"FUEL",     name:"Fuel Qty",       grp:"SYSTEMS", color:"var(--p)",  dot:"background:rgba(176,106,255,.35)"},
+  {id:"COMMS",    name:"Comms / Xpdr",   grp:"COMMS",   color:"var(--y)",  dot:"background:var(--y)"},
+  {id:"TCAS",     name:"TCAS / ACAS",    grp:"COMMS",   color:"var(--y)",  dot:"background:rgba(255,255,0,.45)"},
+  {id:"ILS_MMR",  name:"ILS / MMR",      grp:"NAV AIDS", color:"var(--g)", dot:"background:var(--g)"},
+];
+
+let selCh = "FADEC_1";
+let paused = false;
+let wordCount = 0, errCount = 0;
+let fmtFilter = "";
+let simT = 0;
+
+// ════════════════════════════════════════════════
+// SIDEBAR BUILD
+// ════════════════════════════════════════════════
+
+function buildSidebar(){
+  const el=document.getElementById('ch-list');
+  const groups={};
+  CHANNELS.forEach(c=>{if(!groups[c.grp])groups[c.grp]=[];groups[c.grp].push(c)});
+  el.innerHTML=Object.entries(groups).map(([g,chs])=>`
+    <div class="ch-grp">${g}</div>
+    ${chs.map(c=>`
+      <div class="ch-row ${c.id===selCh?'sel':''}" onclick="selectChannel('${c.id}')">
+        <span class="ch-dot active" style="${c.dot}"></span>
+        <span>${c.name}</span>
+        ${c.note?`<span style="font-size:8px;color:var(--gr)">${c.note}</span>`:''}
+        <span class="ch-wc" id="cwc-${c.id}">—</span>
+      </div>`).join('')}
+  `).join('');
+}
+
+function selectChannel(id){
+  selCh=id;
+  document.querySelectorAll('.ch-row').forEach(r=>{
+    r.classList.toggle('sel', r.textContent.includes(CHANNELS.find(c=>c.id===id)?.name||''));
+  });
+  document.getElementById('ch-sel').value=id;
+  document.getElementById('sb-ch').textContent=id;
+  buildSidebar();
+}
+
+// ════════════════════════════════════════════════
+// WORD GENERATION (mirrors _arinc429.js)
+// ════════════════════════════════════════════════
+
+function makeBNR(lbl,sdi,v,res,pos=true){
+  const d=encodeBNR(Math.abs(v),res);
+  const ssm=pos?SSM_PLUS:SSM_MINUS;
+  return {raw:encodeWord(lbl,sdi,d,ssm),label:lbl,sdi,data19:d,ssm,value:v,res,format:'BNR'};
+}
+function makeDIS(lbl,sdi,bits){
+  const raw=encodeWord(lbl,sdi,bits&0x7FFFF,SSM_NORM);
+  return {raw,label:lbl,sdi,data19:bits,ssm:SSM_NORM,value:bits,format:'DIS'};
+}
+function encodeBCD2(v){let x=Math.round(Math.abs(v)),r=0,s=0;while(x>0&&s<20){r|=(x%10)<<s;x=Math.floor(x/10);s+=4}return r}
+function makeBCD(lbl,sdi,v){const d=encodeBCD2(v);const raw=encodeWord(lbl,sdi,d,SSM_NORM);return{raw,label:lbl,sdi,data19:d,ssm:SSM_NORM,value:v,format:'BCD'}}
+
+const LABEL_NAMES={
+  0o061:"N1 ENG 1",0o062:"N1 ENG 2",0o063:"N1 ENG 3",0o064:"N1 ENG 4",
+  0o065:"N2 ENG 1",0o066:"N2 ENG 2",0o071:"EGT ENG 1",0o072:"EGT ENG 2",
+  0o073:"FF ENG 1",0o074:"FF ENG 2",0o077:"OIL PRESS 1",0o041:"OIL TEMP 1",
+  0o051:"EPR ENG 1",0o052:"EPR ENG 2",0o055:"VIB ENG 1",
+  0o100:"LATITUDE",0o101:"LONGITUDE",0o102:"GND SPEED",0o113:"IAS",0o114:"MACH",
+  0o203:"BARO ALT 1",0o204:"BARO ALT 2",0o205:"MACH",0o206:"IAS",0o210:"TAS",
+  0o211:"SAT",0o213:"TAT",0o235:"BARO SET",
+  0o212:"INERT V/S",0o320:"MAG HDG",0o324:"PITCH",0o325:"ROLL",
+  0o326:"PITCH RATE",0o327:"ROLL RATE",0o330:"YAW RATE",
+  0o335:"NORM ACCEL",0o336:"LONG ACCEL",0o337:"LAT ACCEL",
+  0o130:"CRZ ALT",0o132:"GROSS WT",0o135:"FUEL TOT",0o136:"FUEL L",
+  0o137:"FUEL R",0o140:"FUEL CTR",0o151:"DTG DEST",0o173:"XTK/LOC DEV",0o174:"G/S DEV",
+  0o247:"CAB ALT",0o250:"DIFF PRESS",0o251:"CAB V/S",
+  0o261:"HYD PRESS A",0o262:"HYD PRESS B",
+  0o026:"SQUAWK",0o030:"VHF1 FREQ",0o031:"VHF2 FREQ",0o035:"ILS FREQ",
+  0o270:"TCAS MODE",0o271:"TCAS RA CMD",
+  0o273:"AP ENGAGED",0o274:"AT ENGAGED",0o275:"FD ON",
+};
+function lname(l){return LABEL_NAMES[l]||`LBL ${l.toString(8).padStart(3,'0')}`}
+
+const LABEL_UNITS={
+  0o061:'%',0o062:'%',0o063:'%',0o064:'%',0o065:'%',0o066:'%',
+  0o071:'°C',0o072:'°C',0o073:'kg/h',0o074:'kg/h',0o077:'PSI',0o041:'°C',
+  0o051:'ratio',0o055:'IPS',0o100:'°',0o101:'°',0o102:'kt',0o114:'Mach',
+  0o203:'ft',0o204:'ft',0o205:'Mach',0o206:'kt',0o210:'kt',0o211:'°C',0o213:'°C',
+  0o212:'fpm',0o320:'°',0o324:'°',0o325:'°',0o326:'°/s',0o327:'°/s',0o330:'°/s',
+  0o335:'g',0o247:'ft',0o250:'PSI',0o251:'fpm',0o261:'PSI',0o262:'PSI',
+  0o130:'ft',0o132:'lb',0o135:'lb',0o136:'lb',0o137:'lb',0o140:'lb',0o151:'NM',
+  0o030:'MHz',0o031:'MHz',0o035:'MHz',0o273:'flag',0o274:'flag',0o275:'flag',
+};
+function lunit(l){return LABEL_UNITS[l]||''}
+
+function generateChannelWords(ch, t, ac){
+  const AC=AC_TYPES[ac]||AC_TYPES.A320;
+  const n1a=AC.n1_cruise+noise(t*1.2,2,.35);
+  const n1b=AC.n1_cruise-.2+noise(t*.9,1.8,.35);
+  const egta=AC.egt_cruise+noise(t*.7,1.5,5);
+  const egtb=AC.egt_cruise-3+noise(t*.6,1.3,5);
+  const ias=280+noise(t,.8,1.6);
+  const mach=0.840+noise(t,.8,.002);
+  const alt=37000+noise(t,.2,10);
+  const vs=noise(t,.5,35);
+  const pitch=1.2+noise(t*.5,.18,1);
+  const roll=2.5+noise(t*.3,.35,1);
+  const hdg=85+noise(t*.1,.4,.4);
+  const lat=47.38+t*.000028;
+  const lon=-42.74+t*.000065;
+
+  const WORDS={
+    FADEC_1:[
+      makeBNR(0o061,1,n1a,0.00391),makeBNR(0o065,1,92.1+noise(t*.5,1,.3),0.00391),
+      makeBNR(0o071,1,egta,0.5),makeBNR(0o073,1,1095+noise(t,1,8),0.5),
+      makeBNR(0o077,1,62+noise(t*.3,.5,.8),0.125),makeBNR(0o041,1,112+noise(t*.2,.3,.4),0.25),
+      makeBNR(0o055,1,0.12+noise(t*2,3,.015),0.001),makeBNR(0o051,1,1.420+noise(t*.4,.6,.004),0.001),
+    ],
+    FADEC_2:[
+      makeBNR(0o062,2,n1b,0.00391),makeBNR(0o066,2,91.8+noise(t*.4,1,.3),0.00391),
+      makeBNR(0o072,2,egtb,0.5),makeBNR(0o074,2,1090+noise(t,.8,8),0.5),
+      makeBNR(0o100,2,61+noise(t*.3,.4,.8),0.125),makeBNR(0o042,2,111+noise(t*.2,.3,.4),0.25),
+      makeBNR(0o056,2,0.10+noise(t*1.8,2.5,.012),0.001),makeBNR(0o052,2,1.418,0.001),
+    ],
+    FADEC_3: AC.engines>2?[makeBNR(0o063,3,n1a-.3,0.00391),makeBNR(0o073,3,1090,0.5)]:
+             [{raw:0,label:0o063,sdi:3,data19:0,ssm:SSM_NCD,value:0,format:'BNR'}],
+    FADEC_4: AC.engines>3?[makeBNR(0o064,4,n1b-.4,0.00391),makeBNR(0o074,4,1085,0.5)]:
+             [{raw:0,label:0o064,sdi:4,data19:0,ssm:SSM_NCD,value:0,format:'BNR'}],
+    ADC_1:[
+      makeBNR(0o206,0,ias,0.5),makeBNR(0o205,0,mach,0.000488),
+      makeBNR(0o210,0,458+noise(t,.4,2.2),0.5),makeBNR(0o203,0,alt,0.125),
+      makeBNR(0o211,0,57,0.25,false),makeBNR(0o213,0,34,0.25,false),
+    ],
+    ADC_2:[
+      makeBNR(0o206,2,ias+0.1,0.5),makeBNR(0o205,2,mach+0.0001,0.000488),makeBNR(0o204,2,alt+2,0.125),
+    ],
+    IRS_1:[
+      makeBNR(0o324,1,Math.abs(pitch),0.00137,pitch>=0),makeBNR(0o325,1,Math.abs(roll),0.00137,roll>=0),
+      makeBNR(0o320,1,hdg,0.000687),makeBNR(0o100,1,Math.abs(lat),0.000021458,lat>=0),
+      makeBNR(0o101,1,Math.abs(lon),0.000021458,lon<=0),makeBNR(0o102,1,481+noise(t,.4,4),0.5),
+      makeBNR(0o212,1,Math.abs(vs),8.0,vs>=0),makeBNR(0o335,1,1.003,0.0000153),
+      makeBNR(0o326,1,Math.abs(noise(t,1.2,.02)),0.0000084),
+      makeBNR(0o327,1,Math.abs(noise(t*.8,.9,.01)),0.0000084),
+    ],
+    IRS_2:[
+      makeBNR(0o324,2,Math.abs(pitch+.001),0.00137,pitch>=0),makeBNR(0o325,2,Math.abs(roll+.001),0.00137,roll>=0),
+      makeBNR(0o320,2,hdg+.002,0.000687),
+    ],
+    IRS_3:[
+      makeBNR(0o324,3,Math.abs(pitch+.002),0.00137,pitch>=0),makeBNR(0o325,3,Math.abs(roll+.002),0.00137,roll>=0),
+    ],
+    FMS_1:[
+      makeBNR(0o130,1,37000,4.0),makeBNR(0o135,1,Math.max(30000,85400-t*2.8),2.0),
+      makeBNR(0o132,1,347820-t*2.8,4.0),makeBNR(0o151,1,Math.max(0,2847-t*.133),0.5),
+      makeBNR(0o173,1,0.08+noise(t*.3,.4,.06),0.000191),
+    ],
+    AFCS_1:[
+      makeDIS(0o273,1,1),makeDIS(0o274,1,1),makeDIS(0o275,1,1),
+      makeBNR(0o102,1,37000,4.0),makeBNR(0o103,1,0.840,0.000488),
+    ],
+    HYD:[makeBNR(0o261,0,3010+noise(t*.5,.5,8),1.0),makeBNR(0o262,0,2990+noise(t*.4,.4,8),1.0)],
+    PRESS:[
+      makeBNR(0o247,0,7200+noise(t*.2,.3,20),4.0),makeBNR(0o250,0,8.23+noise(t*.2,.2,.04),0.00391),
+      makeBNR(0o251,0,200,8.0,false),
+    ],
+    FUEL:[
+      makeBNR(0o135,0,Math.max(30000,85400-t*2.8),2.0),
+      makeBNR(0o136,0,Math.max(8000,31500-t*.62),2.0),
+      makeBNR(0o137,0,Math.max(8000,31500-t*.62),2.0),
+      makeBNR(0o140,0,Math.max(0,22400-t*.56),2.0),
+    ],
+    COMMS:[makeDIS(0o030,0,132725),makeDIS(0o031,0,119100),makeDIS(0o026,0,4823)],
+    TCAS:[makeDIS(0o270,0,0b11),makeDIS(0o271,0,0)],
+    ILS_MMR:[
+      makeBCD(0o035,0,109.90),
+      makeBNR(0o173,0,Math.abs(.04+Math.sin(t*.3)*.06),0.00000954),
+      makeBNR(0o174,0,Math.abs(.02+Math.sin(t*.2)*.04),0.00000954),
+    ],
+  };
+  return WORDS[ch]||[];
+}
+
+// ════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════
+
+function ssmText(s){return s===3?'NORM':s===1?'NCD':s===0?'F/W':'F/T'}
+function ssmClass(s){return s===3?'ssm-norm':s===0||s===1?'ssm-fw':'ssm-ncd'}
+function valColor(w){
+  if(w.ssm===0)return'err';
+  if(w.ssm===1)return'warn';
+  return'ok';
+}
+function fmtValue(w){
+  if(w.ssm===SSM_NCD)return'NCD';
+  if(w.ssm===SSM_FW) return'F/W';
+  if(w.format==='DIS')return'0b'+w.data19.toString(2).padStart(8,'0');
+  if(w.format==='BNR')return+(w.value).toFixed(3);
+  return w.value;
+}
+
+function renderWords(){
+  if(paused)return;
+  const words=generateChannelWords(selCh,simT,activeAC)
+    .filter(w=>!fmtFilter||w.format===fmtFilter);
+  const tbl=document.getElementById('word-table');
+  tbl.innerHTML=words.map((w,i)=>`
+    <div class="word-row fresh">
+      <span class="wl">${'0o'+w.label.toString(8).padStart(3,'0')}<br>
+        <span class="wlo">${fmtHex(w.label,2)}</span></span>
+      <span class="wsdi">SDI ${w.sdi}</span>
+      <span class="wraw">${fmtHex(w.raw)}</span>
+      <span class="wval ${valColor(w)}">${fmtValue(w)}</span>
+      <span style="font-family:var(--mono);font-size:9px;color:var(--gr2)">${lunit(w.label)}</span>
+      <span class="wssm ${ssmClass(w.ssm)}">${ssmText(w.ssm)}</span>
+      <span class="wpar ${oddParity(w.raw)?'par-ok':'par-err'}">${oddParity(w.raw)?'OK':'ERR'}</span>
+      <span class="wname">${lname(w.label)}</span>
+    </div>`).join('');
+  wordCount+=words.length;
+  const ec=words.filter(w=>!oddParity(w.raw)).length;
+  errCount+=ec;
+  setText('tb-wc',wordCount.toLocaleString());
+  setText('tb-ec',errCount);
+  document.getElementById('tb-ec').style.color=errCount>0?'var(--r)':'var(--g)';
+  setText('sb-wr',wordCount.toLocaleString());
+  document.getElementById('sb-pe').textContent=errCount;
+  document.getElementById('sb-pe').className=errCount>0?'e':'g';
+  setText('sb-rx',new Date().toISOString().slice(11,23)+'Z');
+  const wps=words.length*10;
+  setText('nb-wps',wps+' words/s');
+  // update channel word counts
+  CHANNELS.forEach(c=>{
+    const el=document.getElementById('cwc-'+c.id);
+    if(el)el.textContent=generateChannelWords(c.id,simT,activeAC).length;
+  });
+}
+
+// ════════════════════════════════════════════════
+// AIRCRAFT PANEL
+// ════════════════════════════════════════════════
+
+function buildACPanel(){
+  const ac=AC_TYPES[activeAC];
+  const det=document.getElementById('ac-detail');
+  det.innerHTML=`
+    <div class="ac-card">
+      <div class="ac-name">
+        <div class="ac-active-dot"></div>
+        ${ac.name}
+      </div>
+      <div class="ac-row"><span class="ac-k">ICAO TYPE</span><span class="ac-v" style="color:var(--c)">${ac.icao}</span></div>
+      <div class="ac-row"><span class="ac-k">ENGINE TYPE</span><span class="ac-v" style="color:var(--a)">${ac.eng}</span></div>
+      <div class="ac-row"><span class="ac-k">ENGINE COUNT</span><span class="ac-v">${ac.engines}</span></div>
+      <hr class="ac-sep">
+      <div class="ac-row"><span class="ac-k">CRUISE N1</span><span class="ac-v" style="color:var(--g)">${ac.n1_cruise}%</span></div>
+      <div class="ac-row"><span class="ac-k">CRUISE EGT</span><span class="ac-v" style="color:var(--a)">${ac.egt_cruise}°C</span></div>
+      <div class="ac-row"><span class="ac-k">EGT MAX TOGA</span><span class="ac-v" style="color:var(--r)">${ac.egt_max}°C</span></div>
+      <hr class="ac-sep">
+      <div class="ac-row"><span class="ac-k">VMO / MMO</span><span class="ac-v">${ac.v_mo}kt / M${ac.m_mo}</span></div>
+      <div class="ac-row"><span class="ac-k">MAX ALT</span><span class="ac-v">FL${Math.round(ac.max_alt/100)}</span></div>
+      <div class="ac-row"><span class="ac-k">MTOW</span><span class="ac-v">${(ac.mtow/1000).toFixed(0)}K lb</span></div>
+      <div class="ac-row"><span class="ac-k">RANGE</span><span class="ac-v">${ac.range.toLocaleString()} NM</span></div>
+      <hr class="ac-sep">
+      <div class="ac-row"><span class="ac-k">AVIONICS</span><span class="ac-v" style="color:var(--c);font-size:9px">${ac.suite}</span></div>
+      <div class="ac-row"><span class="ac-k">BUS ARCH</span><span class="ac-v" style="font-size:9px;color:var(--p)">${ac.bus_arch}</span></div>
+    </div>`;
+
+  const list=document.getElementById('ac-type-list');
+  list.innerHTML=Object.values(AC_TYPES).map(a=>`
+    <div class="ac-type-btn ${a.icao===activeAC?'active':''}" onclick="switchAC('${a.icao}')">
+      <span class="ac-icao ${icaoColor(a.icao)}">${a.icao}</span>
+      <span>${a.name}</span>
+      <span class="ac-eng-badge">${a.engines}× eng</span>
+    </div>`).join('');
+  setText('nb-ac',ac.icao+' / '+ac.eng.split(' ').slice(0,2).join(' '));
+}
+
+function switchAC(icao){
+  activeAC=icao;
+  buildACPanel();
+  toast('✓ Switched to '+AC_TYPES[icao].name);
+}
+
+// ════════════════════════════════════════════════
+// CONTROLS
+// ════════════════════════════════════════════════
+
+function togglePause(){
+  paused=!paused;
+  document.getElementById('pause-btn').textContent=paused?'▶ RESUME':'⏸ PAUSE';
+  document.getElementById('paused-badge').style.display=paused?'flex':'none';
+  toast(paused?'⏸ Stream paused':'▶ Stream resumed');
+}
+
+function clearLog(){
+  wordCount=0;errCount=0;
+  document.getElementById('word-table').innerHTML='';
+  toast('✓ Log cleared');
+}
+
+function applyFilter(){
+  fmtFilter=document.getElementById('fmt-filter').value;
+}
+
+function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v}
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+
+// CLOCK
+function clk(){const n=new Date();setText('nclk',`${String(n.getUTCHours()).padStart(2,'0')}:${String(n.getUTCMinutes()).padStart(2,'0')}:${String(n.getUTCSeconds()).padStart(2,'0')}Z`)}
+setInterval(clk,1000);clk();
+
+// MAIN LOOP
+let lastT=0;
+function loop(ts){
+  const dt=Math.min((ts-lastT)/1000,.1);lastT=ts;
+  simT+=dt;
+  renderWords();
+  requestAnimationFrame(loop);
+}
+
+// INIT
+buildSidebar();
+buildACPanel();
+requestAnimationFrame(loop);
+</script>
+</body></html>

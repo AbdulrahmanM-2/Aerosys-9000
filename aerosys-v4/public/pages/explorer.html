@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AeroSys 9000 — API Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg0:#02040a;--bg1:#040812;--bg2:#07101e;--bg3:#0c1828;
+  --g:#00e676;--c:#00e5ff;--a:#ffab00;--r:#ff1744;--b:#448aff;--p:#b06aff;
+  --w:#e4f0fb;--gr:#3a5060;--gr2:#5a7080;--bdr:rgba(0,229,255,0.1);
+  --sG:0 0 12px rgba(0,230,118,.55);--sC:0 0 12px rgba(0,229,255,.55);
+  --mono:'Share Tech Mono',monospace;--hud:'Orbitron',sans-serif;--ui:'Rajdhani',sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:var(--bg0);color:var(--w);font-family:var(--ui);overflow:hidden}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.018) 3px,rgba(0,0,0,.018) 4px);pointer-events:none;z-index:9999}
+
+/* NAV */
+nav{height:48px;background:rgba(2,4,10,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;padding:0 24px;gap:0;flex-shrink:0;position:relative;z-index:100}
+.brand{font-family:var(--hud);font-size:11px;letter-spacing:2.5px;color:var(--c);text-shadow:var(--sC);
+  display:flex;align-items:center;gap:8px;margin-right:28px}
+.brand-dot{width:6px;height:6px;border-radius:50%;background:var(--g);box-shadow:var(--sG);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.nl{font-family:var(--hud);font-size:8px;letter-spacing:1.5px;color:var(--gr2);padding:0 14px;
+  display:flex;align-items:stretch;align-items:center;border-right:1px solid var(--bdr);
+  cursor:pointer;transition:all .2s;text-decoration:none;height:100%}
+.nl:hover{color:var(--c);background:rgba(0,229,255,.04)}
+.nav-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.nbg{font-family:var(--mono);font-size:9px;padding:3px 9px;border-radius:3px;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.28);color:var(--g)}
+.nbc{background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.28);color:var(--c)}
+#nav-clk{font-family:var(--hud);font-size:11px;color:var(--c);margin-left:6px}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:260px 1fr;height:calc(100vh - 48px)}
+.sidebar{background:var(--bg2);border-right:1px solid var(--bdr);overflow-y:auto;display:flex;flex-direction:column}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+.main{overflow-y:auto;background:var(--bg1);display:flex;flex-direction:column}
+.main::-webkit-scrollbar{width:6px}
+.main::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+
+/* SIDEBAR */
+.sb-header{padding:14px 16px;border-bottom:1px solid var(--bdr);background:rgba(0,0,0,.25)}
+.sb-title{font-family:var(--hud);font-size:8px;letter-spacing:2px;color:var(--c);margin-bottom:4px}
+.sb-meta{font-family:var(--mono);font-size:9px;color:var(--gr2);display:flex;gap:8px;flex-wrap:wrap}
+.sb-badge{padding:2px 7px;border-radius:2px;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.2);color:var(--g)}
+.sb-search{padding:8px 12px;border-bottom:1px solid var(--bdr)}
+.sb-search input{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--bdr);border-radius:3px;
+  padding:6px 10px;font-family:var(--mono);font-size:10px;color:var(--w);outline:none;transition:border-color .2s}
+.sb-search input:focus{border-color:var(--c)}
+.sb-search input::placeholder{color:var(--gr)}
+.grp-hdr{font-family:var(--hud);font-size:7px;letter-spacing:2px;color:var(--gr);
+  padding:10px 14px 3px;text-transform:uppercase}
+.ep-row{display:flex;align-items:center;gap:7px;padding:5px 14px;cursor:pointer;
+  font-family:var(--mono);font-size:10px;color:rgba(200,220,240,.55);transition:all .15s;
+  border-left:2px solid transparent}
+.ep-row:hover{background:rgba(0,229,255,.04);color:var(--w)}
+.ep-row.sel{background:rgba(0,229,255,.06);color:var(--c);border-left-color:var(--c)}
+.mtag{font-family:var(--hud);font-size:7px;padding:1.5px 5px;border-radius:2px;
+  min-width:40px;text-align:center;font-weight:700;flex-shrink:0;letter-spacing:.5px}
+.mg{background:rgba(0,230,118,.15);color:var(--g);border:1px solid rgba(0,230,118,.25)}
+.mp{background:rgba(68,138,255,.15);color:var(--b);border:1px solid rgba(68,138,255,.25)}
+.mpa{background:rgba(255,171,0,.15);color:var(--a);border:1px solid rgba(255,171,0,.25)}
+.mpu{background:rgba(176,106,255,.15);color:var(--p);border:1px solid rgba(176,106,255,.25)}
+.mr{background:rgba(255,23,68,.15);color:var(--r);border:1px solid rgba(255,23,68,.25)}
+
+/* DETAIL PANEL */
+.detail{padding:28px 32px;flex:1}
+.ep-hdr{display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-bottom:16px;border-bottom:1px solid var(--bdr)}
+.ep-method{font-family:var(--hud);font-size:10px;padding:7px 16px;border-radius:3px;letter-spacing:1px;flex-shrink:0}
+.ep-path{font-family:var(--mono);font-size:18px;color:var(--w)}
+.ep-tag{font-family:var(--hud);font-size:7px;padding:3px 10px;border-radius:10px;
+  background:rgba(255,255,255,.05);border:1px solid var(--bdr);color:var(--gr2);margin-left:auto}
+.ep-desc{font-size:13px;color:var(--gr2);line-height:1.65;margin-bottom:22px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.sec-lbl{font-family:var(--hud);font-size:7.5px;letter-spacing:2px;color:var(--gr);
+  margin-bottom:10px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.sec-lbl::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06)}
+.param-row{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);align-items:flex-start;font-size:11px}
+.param-name{font-family:var(--mono);color:var(--c);min-width:120px;flex-shrink:0}
+.param-in{font-family:var(--hud);font-size:7px;padding:1px 6px;border-radius:2px;
+  background:rgba(255,255,255,.06);color:var(--gr2);white-space:nowrap;flex-shrink:0}
+.param-type{font-family:var(--mono);color:var(--p);font-size:10px;white-space:nowrap;flex-shrink:0}
+.param-desc{color:var(--gr2)}
+.resp-row{display:flex;gap:10px;padding:5px 0;align-items:center;font-size:11px}
+.resp-code{font-family:var(--mono);font-weight:700;min-width:36px;font-size:11px}
+.resp-desc{color:var(--gr2)}
+.code-block{background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.07);border-radius:5px;
+  padding:16px;font-family:var(--mono);font-size:10px;line-height:1.7;overflow-x:auto;
+  max-height:220px;overflow-y:auto}
+.code-block::-webkit-scrollbar{width:3px;height:3px}
+.code-block::-webkit-scrollbar-thumb{background:var(--bdr)}
+.jk{color:var(--c)}.js{color:var(--g)}.jn{color:var(--a)}.jb{color:var(--p)}.jc{color:var(--gr)}
+
+/* TRY IT */
+.try-section{margin-top:22px;padding-top:18px;border-top:1px solid var(--bdr)}
+.try-url-bar{display:flex;gap:8px;margin-bottom:10px}
+.try-inp{flex:1;background:rgba(0,0,0,.4);border:1px solid var(--bdr);border-radius:3px;
+  padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--w);outline:none;transition:border-color .2s}
+.try-inp:focus{border-color:var(--c)}
+.try-btn{font-family:var(--hud);font-size:8px;letter-spacing:1.5px;padding:8px 20px;
+  border-radius:3px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.28);
+  color:var(--c);cursor:pointer;transition:all .2s;white-space:nowrap}
+.try-btn:hover{background:rgba(0,229,255,.18);box-shadow:0 0 12px rgba(0,229,255,.15)}
+.try-status{font-family:var(--mono);font-size:9px;color:var(--gr);margin-bottom:6px;display:flex;gap:12px}
+.resp-area{background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.07);border-radius:4px;
+  padding:14px;font-family:var(--mono);font-size:10px;line-height:1.65;
+  min-height:120px;max-height:280px;overflow-y:auto;color:var(--g);white-space:pre}
+.resp-area.loading{color:var(--a)}
+.resp-area.err{color:var(--r)}
+.resp-area::-webkit-scrollbar{width:3px}
+.resp-area::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+
+/* HEADER BAR above endpoint */
+.ep-header-bar{padding:14px 32px;border-bottom:1px solid var(--bdr);
+  background:rgba(0,0,0,.2);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.ehb-label{font-family:var(--hud);font-size:7px;letter-spacing:2px;color:var(--gr)}
+.ehb-val{font-family:var(--mono);font-size:11px;color:var(--c)}
+.ehb-copy{font-family:var(--hud);font-size:7px;padding:3px 10px;border:1px solid var(--bdr);
+  border-radius:2px;background:transparent;color:var(--gr2);cursor:pointer;transition:all .2s;margin-left:auto}
+.ehb-copy:hover{border-color:var(--c);color:var(--c)}
+
+/* EMPTY STATE */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;gap:14px;color:var(--gr);font-family:var(--mono);font-size:11px;text-align:center;padding:40px}
+.empty-icon{font-size:48px;opacity:.3}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--bdr);
+  border-radius:4px;padding:10px 16px;font-family:var(--hud);font-size:9px;color:var(--c);
+  z-index:9998;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+<nav>
+  <div class="brand"><div class="brand-dot"></div>AEROSYS 9000</div>
+  <a class="nl" href="/">PLATFORM</a>
+  <a class="nl" href="cockpit.html">COCKPIT</a>
+  <a class="nl act" style="color:var(--c)" href="explorer.html">API EXPLORER</a>
+  <a class="nl" href="source.html">ADA SOURCE</a>
+  <div class="nav-r">
+    <span class="nbg">OpenAPI 3.1</span>
+    <span class="nbc">17 Endpoints</span>
+    <span id="nav-clk">00:00:00Z</span>
+  </div>
+</nav>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-header">
+      <div class="sb-title">REST API v2 · OpenAPI 3.1</div>
+      <div class="sb-meta">
+        <span class="sb-badge">17 endpoints</span>
+        <span style="color:var(--gr2)">Base: /api/v2</span>
+      </div>
+    </div>
+    <div class="sb-search">
+      <input id="ep-search" placeholder="Search endpoints…" oninput="filterEps(this.value)">
+    </div>
+    <div id="ep-list"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="ep-header-bar">
+      <div class="ehb-label">BASE URL</div>
+      <div class="ehb-val" id="base-url">https://aerosys-9000.vercel.app/api/v2</div>
+      <button class="ehb-copy" onclick="copyBase()">COPY</button>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--gr);margin-left:16px">Auth: Bearer &lt;jwt&gt;</div>
+      <div style="margin-left:auto;font-family:var(--mono);font-size:9px;display:flex;align-items:center;gap:6px">
+        <span id="epclk-live" style="width:6px;height:6px;border-radius:50%;background:var(--g);box-shadow:0 0 6px rgba(0,230,118,.6);display:inline-block;animation:pulse 1.4s ease-in-out infinite"></span>
+        <span style="color:var(--g)">LIVE SIM DATA</span>
+      </div>
+    </div>
+    <div id="ep-detail" class="detail">
+      <div class="empty-state">
+        <div class="empty-icon">⚡</div>
+        <div style="font-family:var(--hud);font-size:10px;letter-spacing:2px;color:var(--c)">AeroSys REST API v2</div>
+        <div>Select an endpoint from the sidebar to explore it.</div>
+        <div style="color:var(--gr);font-size:9px;margin-top:8px">17 endpoints · JWT auth · SSE streaming · CORS enabled</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// CLOCK
+function clk(){const n=new Date();document.getElementById('nav-clk').textContent=`${String(n.getUTCHours()).padStart(2,'0')}:${String(n.getUTCMinutes()).padStart(2,'0')}:${String(n.getUTCSeconds()).padStart(2,'0')}Z`}
+setInterval(clk,1000);clk();
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+function copyBase(){navigator.clipboard?.writeText('https://aerosys-9000.vercel.app/api/v2').then(()=>toast('✓ Base URL copied'));};
+
+// ENDPOINT DATA
+const EPS = [
+  {tag:'Telemetry',m:'GET',path:'/telemetry',auth:true,
+    desc:'Returns a full telemetry snapshot for the current flight — attitude angles, speed tape values, position, and acceleration vectors.',
+    params:[{n:'flight_id',in:'query',t:'string',d:'Optional flight ID filter'}],
+    resps:[{c:200,col:'var(--g)',d:'TelemetrySnapshot object'},{c:401,col:'var(--r)',d:'Unauthorized — JWT required'},{c:503,col:'var(--r)',d:'ARINC data bus error'}],
+    example:`{\n  "timestamp": "2026-03-13T14:22:47Z",\n  "flight_id": "AS2847",\n  "attitude": {\n    "pitch_deg": 1.24,\n    "roll_deg": 2.53,\n    "valid": true\n  },\n  "speeds": {\n    "ias_kt": 280.3,\n    "mach": 0.8401,\n    "gs_kt": 483\n  },\n  "position": {\n    "latitude": 47.3821,\n    "longitude": -42.7419,\n    "altitude_ft": 37008,\n    "vs_fpm": 12\n  }\n}`,
+    liveUrl:'/api/v2/telemetry?no_auth=1'},
+  {tag:'Telemetry',m:'GET',path:'/telemetry/stream',auth:true,
+    desc:'Server-Sent Events (SSE) stream at up to 50 Hz. Connect via EventSource API. Each event contains a compact telemetry frame.',
+    params:[{n:'rate_hz',in:'query',t:'integer',d:'1–50 Hz (default: 10)'},{n:'fields',in:'query',t:'string',d:'Comma-separated field filter'}],
+    resps:[{c:200,col:'var(--g)',d:'text/event-stream — 50 events max then EOF'},{c:400,col:'var(--a)',d:'rate_hz out of range'}],
+    example:`data: {"seq":0,"timestamp":"…","ias_kt":280.3,"mach":0.840}\n\ndata: {"seq":1,"timestamp":"…","ias_kt":280.1,"mach":0.840}\n\ndata: {"seq":2,"timestamp":"…","ias_kt":280.6,"mach":0.841}`,
+    liveUrl:null},
+  {tag:'Telemetry',m:'GET',path:'/telemetry/history',auth:true,
+    desc:'Returns a time-series array of telemetry snapshots. Supports from/to ISO8601 range and field selection.',
+    params:[{n:'from',in:'query',t:'datetime',d:'ISO 8601 start time'},{n:'to',in:'query',t:'datetime',d:'ISO 8601 end time'},{n:'interval_s',in:'query',t:'integer',d:'Sample interval in seconds (1–300)'}],
+    resps:[{c:200,col:'var(--g)',d:'Array of TelemetrySnapshot'},{c:400,col:'var(--a)',d:'Invalid time range'}],
+    example:`{\n  "count": 2,\n  "interval_s": 60,\n  "data": [\n    {"timestamp":"2026-03-13T14:00:00Z","ias_kt":279.8,"altitude_ft":37000},\n    {"timestamp":"2026-03-13T14:01:00Z","ias_kt":280.2,"altitude_ft":37004}\n  ]\n}`,
+    liveUrl:null},
+  {tag:'Autopilot',m:'GET',path:'/autopilot',auth:true,
+    desc:'Returns the complete autopilot state: engagement status, active lateral/vertical/speed modes, and all numeric targets.',
+    params:[],
+    resps:[{c:200,col:'var(--g)',d:'AutopilotState'},{c:401,col:'var(--r)',d:'Unauthorized'}],
+    example:`{\n  "engaged": true,\n  "fd_on": true,\n  "autothrust_engaged": true,\n  "lateral_mode": "LNAV",\n  "vertical_mode": "VNAV_ALT",\n  "speed_mode": "MACH",\n  "targets": {\n    "target_mach": 0.840,\n    "target_altitude_ft": 37000,\n    "target_vs_fpm": 0\n  }\n}`,
+    liveUrl:'/api/v2/autopilot?no_auth=1'},
+  {tag:'Autopilot',m:'POST',path:'/autopilot/engage',auth:true,
+    desc:'Engage or disconnect the autopilot. Requires the source field to identify the commanding station. May fail if attitude is outside limits.',
+    params:[{n:'engaged',in:'body',t:'boolean',d:'true = engage, false = disconnect'},{n:'source',in:'body',t:'enum',d:'pilot | copilot | fms | ground'}],
+    resps:[{c:200,col:'var(--g)',d:'Updated AutopilotState'},{c:409,col:'var(--a)',d:'Attitude outside engagement limits'},{c:423,col:'var(--r)',d:'Locked by higher-priority source'}],
+    example:`// Request body\n{\n  "engaged": true,\n  "source": "fms"\n}\n\n// 200 Response\n{\n  "engaged": true,\n  "lateral_mode": "LNAV",\n  "vertical_mode": "VNAV_ALT"\n}`,
+    liveUrl:null},
+  {tag:'Autopilot',m:'PATCH',path:'/autopilot/targets',auth:true,
+    desc:'Update one or more autopilot numeric targets. All fields optional — only provided fields are changed.',
+    params:[{n:'target_mach',in:'body',t:'number',d:'0.60–0.88'},{n:'target_altitude_ft',in:'body',t:'integer',d:'0–45,000'},{n:'target_heading_deg',in:'body',t:'integer',d:'0–360'},{n:'target_vs_fpm',in:'body',t:'integer',d:'-8000 to +8000'}],
+    resps:[{c:200,col:'var(--g)',d:'Updated targets'},{c:400,col:'var(--a)',d:'Value out of range'}],
+    example:`// Climb to FL390 at 1500 fpm\n{\n  "target_altitude_ft": 39000,\n  "target_vs_fpm": 1500\n}`,
+    liveUrl:null},
+  {tag:'Autopilot',m:'PUT',path:'/autopilot/modes',auth:true,
+    desc:'Set explicit lateral and/or vertical mode. Bypasses normal mode logic — use for testing and direct control.',
+    params:[{n:'lateral_mode',in:'body',t:'enum',d:'LNAV|HDG_SEL|HDG_HOLD|LOC|OFF'},{n:'vertical_mode',in:'body',t:'enum',d:'VNAV_ALT|VNAV_PTH|FLCH|ALT_HOLD|VS_MODE|GS'}],
+    resps:[{c:200,col:'var(--g)',d:'Updated AutopilotState'},{c:400,col:'var(--a)',d:'Invalid mode enum'}],
+    example:`{\n  "lateral_mode": "HDG_SEL",\n  "vertical_mode": "VS_MODE"\n}`,
+    liveUrl:null},
+  {tag:'Engines',m:'GET',path:'/engines',auth:true,
+    desc:'Returns an array of all engine data records: N1/N2 percentages, EGT, fuel flow, oil system, vibration, FADEC channel and thrust rating.',
+    params:[],
+    resps:[{c:200,col:'var(--g)',d:'{ count, engines[] }'},{c:401,col:'var(--r)',d:'Unauthorized'}],
+    example:`{\n  "count": 2,\n  "engines": [\n    {\n      "engine_id": 1,\n      "type": "CFM56-5B4/P",\n      "status": "RUNNING",\n      "n1_pct": 84.62,\n      "egt_c": 742,\n      "ff_kg_h": 1097.3,\n      "thrust_rating": "CRZ",\n      "vibration": 0.118\n    }\n  ]\n}`,
+    liveUrl:'/api/v2/engines?no_auth=1'},
+  {tag:'Engines',m:'GET',path:'/engines/{id}',auth:true,
+    desc:'Returns data for a single engine by 1-based ID.',
+    params:[{n:'id',in:'path',t:'integer',d:'Engine number 1–4'}],
+    resps:[{c:200,col:'var(--g)',d:'EngineData'},{c:404,col:'var(--a)',d:'Engine ID not found'}],
+    example:`{\n  "engine_id": 2,\n  "n1_pct": 84.4,\n  "n2_pct": 91.8,\n  "egt_c": 738,\n  "oil_pressure_psi": 61.0,\n  "oil_temp_c": 111,\n  "fadec_channel": "A"\n}`,
+    liveUrl:null},
+  {tag:'Engines',m:'POST',path:'/engines/{id}/thrust',auth:true,
+    desc:'Command the FADEC to change thrust rating. Requires fadec_write scope. TOGA and FLEX require additional safety interlocks.',
+    params:[{n:'id',in:'path',t:'integer',d:'Engine 1–4'},{n:'thrust_rating',in:'body',t:'enum',d:'TOGA|FLEX|MCT|CLB|CRZ|IDLE|REVERSE'},{n:'flex_temp',in:'body',t:'integer',d:'FLEX temperature (FLEX mode only)'}],
+    resps:[{c:200,col:'var(--g)',d:'Updated EngineData'},{c:409,col:'var(--r)',d:'FADEC rejected command'},{c:451,col:'var(--r)',d:'TOGA disarmed — safety interlock'}],
+    example:`// Set CLB thrust\n{\n  "thrust_rating": "CLB"\n}\n\n// 200 Response\n{\n  "engine_id": 1,\n  "thrust_rating": "CLB",\n  "n1_pct": 91.2,\n  "egt_c": 789\n}`,
+    liveUrl:null},
+  {tag:'FMS',m:'GET',path:'/fms/route',auth:true,
+    desc:'Returns the active flight plan: waypoints array, active leg index, ETAs, distances to go, and route metadata.',
+    params:[],
+    resps:[{c:200,col:'var(--g)',d:'FlightPlan object'},{c:401,col:'var(--r)',d:'Unauthorized'}],
+    example:`{\n  "origin": "KJFK",\n  "destination": "EGLL",\n  "active_leg": 1,\n  "waypoints": [\n    {\n      "identifier": "MERIT",\n      "latitude": 47.38,\n      "longitude": -42.74,\n      "eta": "2026-03-13T17:42:00Z",\n      "dist_to_go_nm": 42\n    }\n  ]\n}`,
+    liveUrl:'/api/v2/fms/route?no_auth=1'},
+  {tag:'FMS',m:'POST',path:'/fms/route/waypoints',auth:true,
+    desc:'Insert a new waypoint into the active route at a given sequence position. Use -1 to append.',
+    params:[{n:'waypoint',in:'body',t:'Waypoint',d:'Waypoint object with ident, lat, lon'},{n:'position',in:'body',t:'integer',d:'Sequence index (-1 = append)'}],
+    resps:[{c:201,col:'var(--g)',d:'Updated FlightPlan'},{c:400,col:'var(--a)',d:'Invalid fix or duplicate ident'}],
+    example:`{\n  "waypoint": {\n    "identifier": "SOMAX",\n    "latitude": 54.20,\n    "longitude": -18.40,\n    "altitude_constraint": "FL370"\n  },\n  "position": 3\n}`,
+    liveUrl:null},
+  {tag:'FMS',m:'GET',path:'/fms/performance',auth:true,
+    desc:'Returns FMS-computed performance data: gross weight, FOB, EFOB at destination, cost index, optimal flight level, ISA deviation.',
+    params:[],
+    resps:[{c:200,col:'var(--g)',d:'PerformanceData object'}],
+    example:`{\n  "cost_index": 35,\n  "gross_weight_lb": 345200,\n  "fuel_on_board_lb": 83000,\n  "efob_destination": 31800,\n  "optimal_fl": 370,\n  "isa_deviation": -4.0,\n  "cruise_mach": 0.840\n}`,
+    liveUrl:'/api/v2/fms/performance?no_auth=1'},
+  {tag:'Navigation',m:'GET',path:'/navigation/position',auth:true,
+    desc:'GPS/IRS blended navigation position with accuracy metrics, individual IRS positions, and GPS quality indicators.',
+    params:[],
+    resps:[{c:200,col:'var(--g)',d:'NavigationPosition'}],
+    example:`{\n  "blended_latitude": 47.3821,\n  "blended_longitude": -42.7419,\n  "gps_accuracy_nm": 0.05,\n  "position_uncertainty_nm": 0.08,\n  "source": "GPS",\n  "irs1_latitude": 47.3822,\n  "irs1_longitude": -42.7420\n}`,
+    liveUrl:'/api/v2/navigation/position?no_auth=1'},
+  {tag:'Navigation',m:'GET',path:'/navigation/tcas',auth:true,
+    desc:'Complete TCAS traffic picture: TA/RA mode, active resolution advisory sense, and all tracked targets with bearing, range, altitude delta.',
+    params:[],
+    resps:[{c:200,col:'var(--g)',d:'TCASData with targets[]'}],
+    example:`{\n  "mode": "TA_RA",\n  "ra_active": false,\n  "targets": [\n    {\n      "callsign": "UAL441",\n      "bearing_deg": 285,\n      "distance_nm": 4.2,\n      "relative_alt_ft": 1000,\n      "threat_level": "PROXIMATE"\n    }\n  ]\n}`,
+    liveUrl:'/api/v2/navigation/tcas?no_auth=1'},
+  {tag:'Navigation',m:'GET',path:'/navigation/ils',auth:true,
+    desc:'ILS receiver state: frequency, identifier, localiser and glideslope deviation in dots, capture status, back-course flag.',
+    params:[],
+    resps:[{c:200,col:'var(--g)',d:'ILSData'}],
+    example:`{\n  "frequency_mhz": 109.90,\n  "identifier": "IWR",\n  "localizer_dev_dots": 0.04,\n  "glideslope_dev_dots": -0.02,\n  "localizer_captured": false,\n  "glideslope_captured": false,\n  "dme_nm": 0\n}`,
+    liveUrl:'/api/v2/navigation/ils?no_auth=1'},
+  {tag:'Systems',m:'GET',path:'/systems',auth:true,
+    desc:'Returns a keyed map of all 12 aircraft systems with status and parameter data. Status: NORMAL | ADVISORY_H | CAUTION | WARNING.',
+    params:[],
+    resps:[{c:200,col:'var(--g)',d:'SystemsMap object'}],
+    example:`{\n  "electrical": {\n    "system_id": "electrical",\n    "status": "NORMAL",\n    "params": {"bus_volts":115,"freq_hz":400}\n  },\n  "apu": {\n    "system_id": "apu",\n    "status": "ADVISORY_H",\n    "params": {"status":"FAULT"}\n  }\n}`,
+    liveUrl:'/api/v2/systems?no_auth=1'},
+  {tag:'Systems',m:'GET',path:'/systems/{id}',auth:true,
+    desc:'Returns a single system record by system_id string key.',
+    params:[{n:'id',in:'path',t:'string',d:'e.g. electrical, hydraulic_a, apu'}],
+    resps:[{c:200,col:'var(--g)',d:'SystemStatus'},{c:404,col:'var(--a)',d:'Unknown system_id'}],
+    example:`// GET /systems/hydraulic_a\n{\n  "system_id": "hydraulic_a",\n  "status": "NORMAL",\n  "params": {\n    "pressure_psi": 3010,\n    "qty_pct": 100\n  }\n}`,
+    liveUrl:null},
+  {tag:'Comms',m:'GET',path:'/comms/vhf',auth:true,
+    desc:'All VHF radios — active and standby frequencies, TX/RX state, squelch.',
+    params:[],
+    resps:[{c:200,col:'var(--g)',d:'RadioState[]'}],
+    example:`[\n  {\n    "radio_id": 1,\n    "active_mhz": 132.725,\n    "standby_mhz": 122.800,\n    "tx": false,\n    "rx": true,\n    "squelch": true\n  }\n]`,
+    liveUrl:'/api/v2/comms/vhf?no_auth=1'},
+  {tag:'Comms',m:'PATCH',path:'/comms/transponder',auth:true,
+    desc:'Read or update transponder squawk code, mode, and IDENT flag. Squawk must be 4 octal digits (0000–7777).',
+    params:[{n:'squawk',in:'body',t:'string[4]',d:'Octal code 0000–7777'},{n:'mode',in:'body',t:'enum',d:'OFF|STBY|ON|ALT|TA|TA_RA'},{n:'ident',in:'body',t:'boolean',d:'Trigger IDENT pulse'}],
+    resps:[{c:200,col:'var(--g)',d:'TransponderState'},{c:400,col:'var(--a)',d:'Invalid squawk — non-octal digits'}],
+    example:`// Set squawk 7700 (emergency)\n{\n  "squawk": "7700",\n  "mode": "TA_RA",\n  "ident": false\n}\n\n// 200 Response\n{\n  "squawk": "7700",\n  "mode": "TA_RA",\n  "altitude_reported": 37008\n}`,
+    liveUrl:'/api/v2/comms/transponder?no_auth=1'},
+  {tag:'Alerts',m:'GET',path:'/alerts',auth:true,
+    desc:'Active caution and warning messages. Supports severity filtering and acknowledged status filter. Returns master warning/caution flags.',
+    params:[{n:'severity',in:'query',t:'enum',d:'WARNING|CAUTION|ADVISORY|ALL'},{n:'acknowledged',in:'query',t:'boolean',d:'Filter by acknowledged status'}],
+    resps:[{c:200,col:'var(--g)',d:'{ master_warning, master_caution, count, alerts[] }'}],
+    example:`{\n  "master_warning": false,\n  "master_caution": true,\n  "count": 2,\n  "alerts": [\n    {\n      "id": "A001",\n      "severity": "CAUTION",\n      "message": "APU FAULT",\n      "acknowledged": false,\n      "triggered_at": "2026-03-13T14:18:22Z"\n    }\n  ]\n}`,
+    liveUrl:'/api/v2/alerts?no_auth=1'},
+  {tag:'Alerts',m:'POST',path:'/alerts/{id}/acknowledge',auth:true,
+    desc:'Acknowledge a specific alert by its ID. Acknowledged alerts remain in the list but are flagged. Cannot un-acknowledge.',
+    params:[{n:'id',in:'path',t:'string',d:'Alert ID e.g. A001'}],
+    resps:[{c:200,col:'var(--g)',d:'Updated Alert'},{c:404,col:'var(--a)',d:'Alert not found'},{c:409,col:'var(--gr2)',d:'Already acknowledged'}],
+    example:`// POST /alerts/A001/acknowledge\n// Response 200\n{\n  "id": "A001",\n  "severity": "CAUTION",\n  "message": "APU FAULT",\n  "acknowledged": true,\n  "acked_at": "2026-03-13T14:20:01Z"\n}`,
+    liveUrl:null},
+  {tag:'Health',m:'GET',path:'/health',auth:false,
+    desc:'Public health check endpoint. Returns overall status, version, uptime, ARINC bus health, and active alert count. No JWT required.',
+    params:[],
+    resps:[{c:200,col:'var(--g)',d:'HealthStatus — all systems nominal'},{c:503,col:'var(--r)',d:'Degraded — one or more critical systems'}],
+    example:`{\n  "status": "OK",\n  "version": "3.0.0",\n  "uptime_sec": 84720,\n  "arinc_bus_ok": true,\n  "data_bus_latency_ms": 2.14,\n  "active_alerts": 2,\n  "flight_id": "AS2847",\n  "ada_runtime": "GNAT-14.1"\n}`,
+    liveUrl:'/api/v2/health'},
+  {tag:'Health',m:'GET',path:'/health/diagnostics',auth:true,
+    desc:'Extended diagnostics with per-subsystem health. Requires admin scope JWT.',
+    params:[],
+    resps:[{c:200,col:'var(--g)',d:'DetailedDiagnostics'},{c:403,col:'var(--r)',d:'Requires admin scope'}],
+    example:`{\n  "status": "OK",\n  "subsystems": {\n    "arinc_429": "OK",\n    "datastore": "OK",\n    "json_codec": "OK",\n    "http_router": "OK",\n    "fadec_iface": "OK"\n  }\n}`,
+    liveUrl:null},
+];
+
+let selIdx = -1;
+function mclass(m){return m==='GET'?'mg':m==='POST'?'mp':m==='PUT'?'mpa':m==='PATCH'?'mpu':'mr'}
+function mcol(m){return m==='GET'?'var(--g)':m==='POST'?'var(--b)':m==='PUT'?'var(--a)':m==='PATCH'?'var(--p)':'var(--r)'}
+
+function buildList(filter=''){
+  const groups = {};
+  EPS.forEach((e,i)=>{
+    if(filter && !e.path.toLowerCase().includes(filter) && !e.tag.toLowerCase().includes(filter) && !e.m.toLowerCase().includes(filter)) return;
+    if(!groups[e.tag])groups[e.tag]=[];
+    groups[e.tag].push({...e,i});
+  });
+  document.getElementById('ep-list').innerHTML = Object.entries(groups).map(([tag,eps])=>`
+    <div class="grp-hdr">${tag}</div>
+    ${eps.map(e=>`<div class="ep-row ${e.i===selIdx?'sel':''}" onclick="selectEP(${e.i})">
+      <span class="mtag ${mclass(e.m)}">${e.m}</span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px">${e.path}</span>
+    </div>`).join('')}
+  `).join('');
+}
+
+function filterEps(v){ buildList(v.toLowerCase()) }
+
+function hJSON(s){
+  return s
+    .replace(/"([^"]+)":/g,'<span class="jk">"$1"</span>:')
+    .replace(/: "([^"]+)"/g,': <span class="js">"$1"</span>')
+    .replace(/: ([\d.]+)/g,': <span class="jn">$1</span>')
+    .replace(/: (true|false|null)/g,': <span class="jb">$1</span>')
+    .replace(/(\/\/.*)/g,'<span class="jc">$1</span>');
+}
+
+function selectEP(i){
+  selIdx=i;
+  const e=EPS[i];
+  const c=mcol(e.m);
+  buildList(document.getElementById('ep-search').value);
+  document.getElementById('ep-detail').innerHTML=`
+    <div class="ep-hdr">
+      <div class="ep-method" style="background:rgba(0,0,0,.35);border:1px solid ${c};color:${c}">${e.m}</div>
+      <div class="ep-path">/api/v2${e.path}</div>
+      <div style="margin-left:auto;font-family:var(--hud);font-size:7px;padding:3px 10px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--bdr);color:var(--gr2)">${e.tag}</div>
+      ${e.auth?'':'<div style="font-family:var(--hud);font-size:7px;padding:3px 10px;border-radius:3px;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.2);color:var(--g)">PUBLIC</div>'}
+    </div>
+    <p class="ep-desc">${e.desc}</p>
+    <div class="detail-grid">
+      <div>
+        <div class="sec-lbl">Parameters ${e.params.length?'('+e.params.length+')':''}</div>
+        ${e.params.length?e.params.map(p=>`
+          <div class="param-row">
+            <span class="param-name">${p.n}</span>
+            <span class="param-in">${p.in}</span>
+            <span class="param-type">${p.t}</span>
+            <span class="param-desc">${p.d}</span>
+          </div>`).join(''):'<div style="font-family:var(--mono);font-size:10px;color:var(--gr);padding:8px 0">No parameters</div>'}
+        <div class="sec-lbl" style="margin-top:18px">Responses</div>
+        ${e.resps.map(r=>`<div class="resp-row">
+          <span class="resp-code" style="color:${r.col}">${r.c}</span>
+          <span class="resp-desc">${r.d}</span>
+        </div>`).join('')}
+        <div class="try-section">
+          <div class="sec-lbl">Try It</div>
+          ${e.liveUrl?`
+            <div class="try-url-bar">
+              <input class="try-inp" value="https://aerosys-9000.vercel.app/api/v2${e.path}" readonly>
+              <button class="try-btn" onclick="sendReq('${e.liveUrl}',${i})">▶ SEND</button>
+            </div>
+            <div class="try-status" id="try-status-${i}">
+              <span>Status: <span id="try-sc-${i}" style="color:var(--gr)">—</span></span>
+              <span>Time: <span id="try-ms-${i}" style="color:var(--gr)">—</span></span>
+              <span>Size: <span id="try-sz-${i}" style="color:var(--gr)">—</span></span>
+            </div>
+            <div class="resp-area" id="try-resp-${i}">// Click ▶ SEND to call the live endpoint</div>
+          `:`<div style="font-family:var(--mono);font-size:10px;color:var(--gr);padding:12px;background:rgba(0,0,0,.3);border:1px solid var(--bdr);border-radius:4px">
+            ${e.m==='POST'||e.m==='PUT'||e.m==='PATCH'?
+              'Write endpoint. Requires JWT Bearer token and a JSON request body.':
+              'SSE stream — connect via: <span style="color:var(--c)">new EventSource(\'/api/v2'+e.path+'\')</span>'}
+          </div>`}
+        </div>
+      </div>
+      <div>
+        <div class="sec-lbl">Example Response</div>
+        <div class="code-block"><pre>${hJSON(e.example)}</pre></div>
+        <div class="sec-lbl" style="margin-top:18px">cURL</div>
+        <div class="code-block" style="font-size:10px"><pre style="color:var(--c)">curl${e.auth?' -H "Authorization: Bearer $TOKEN" \\\n':' \\\n'}  https://aerosys-9000.vercel.app/api/v2${e.path}</pre></div>
+      </div>
+    </div>`;
+}
+
+async function sendReq(url, i){
+  const ra=document.getElementById('try-resp-'+i);
+  const sc=document.getElementById('try-sc-'+i);
+  const ms=document.getElementById('try-ms-'+i);
+  const sz=document.getElementById('try-sz-'+i);
+  ra.className='resp-area loading';ra.textContent='// Sending…';
+  const t0=Date.now();
+  try{
+    const r=await fetch(url);
+    const txt=await r.text();
+    const elapsed=Date.now()-t0;
+    sc.textContent=r.status;sc.style.color=r.ok?'var(--g)':'var(--r)';
+    ms.textContent=elapsed+'ms';ms.style.color='var(--c)';
+    sz.textContent=(new Blob([txt]).size/1024).toFixed(1)+'KB';sz.style.color='var(--c)';
+    let display;
+    try{ display=JSON.stringify(JSON.parse(txt),null,2); }catch{ display=txt; }
+    ra.className='resp-area';
+    ra.textContent=`// HTTP ${r.status} · ${elapsed}ms · ${new Date().toISOString()}\n\n`+display;
+  }catch(err){
+    ra.className='resp-area err';
+    ra.textContent='// Network error: '+err.message+'\n\n// Deploy to Vercel to test live endpoints.\n// Locally: run with serve or use npx vercel dev';
+  }
+}
+
+buildList();
+selectEP(0);
+</script>
+</body></html>
