@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AeroSys 9000 — Integrated Avionics Suite</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈</text></svg>">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg0:#020509;--bg1:#04090f;--bg2:#060d18;--bg3:#081020;
+  --green:#00e676;--green2:#00c853;--green3:#004d1a;
+  --cyan:#00e5ff;--cyan2:#00acc1;
+  --amber:#ffab00;--amber2:#ff8f00;
+  --red:#ff1744;--blue:#448aff;--purple:#b06aff;
+  --white:#e4f0fb;--gray:#4a6070;--gray2:#6a8090;
+  --border:rgba(0,229,255,0.12);--border2:rgba(0,230,118,0.12);
+  --gG:0 0 10px rgba(0,230,118,0.5);--gC:0 0 10px rgba(0,229,255,0.5);
+  --gA:0 0 10px rgba(255,171,0,0.5);--gR:0 0 10px rgba(255,23,68,0.5);
+  --font-mono:'Share Tech Mono',monospace;
+  --font-hud:'Orbitron',monospace;
+  --font-ui:'Rajdhani',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg0);color:var(--white);font-family:var(--font-ui)}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.025) 3px,rgba(0,0,0,.025) 4px);pointer-events:none;z-index:9999}
+
+/* ─── TABS ───────────────────────────────────────── */
+.topbar{height:40px;background:linear-gradient(90deg,#020810,#050e1c,#020810);border-bottom:1px solid var(--border);display:flex;align-items:stretch;position:relative;z-index:200}
+.logo{display:flex;align-items:center;padding:0 18px;font-family:var(--font-hud);font-size:10px;color:var(--cyan);letter-spacing:3px;text-shadow:var(--gC);border-right:1px solid var(--border);white-space:nowrap;gap:8px}
+.logo-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:var(--gG);animation:pulse 2s ease-in-out infinite}
+.tabs{display:flex;align-items:stretch;flex:1}
+.tab{display:flex;align-items:center;gap:6px;padding:0 18px;font-family:var(--font-hud);font-size:8px;letter-spacing:1.5px;color:var(--gray);cursor:pointer;border-right:1px solid var(--border);transition:all .2s;position:relative}
+.tab:hover{color:var(--gray2);background:rgba(255,255,255,.02)}
+.tab.active{color:var(--cyan);background:rgba(0,229,255,.06)}
+.tab.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--cyan);box-shadow:var(--gC)}
+.tab-icon{font-size:12px}
+.topbar-right{display:flex;align-items:center;gap:16px;padding:0 16px;margin-left:auto;font-family:var(--font-mono);font-size:9px}
+.tr-item{display:flex;align-items:center;gap:5px;color:var(--gray)}
+.tr-item .v{color:var(--green);text-shadow:var(--gG)}
+.tr-item .w{color:var(--amber);text-shadow:var(--gA)}
+.clock-utc{font-family:var(--font-hud);font-size:11px;color:var(--cyan);text-shadow:var(--gC)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ─── PAGES ──────────────────────────────────────── */
+.page{display:none;width:100%;height:calc(100vh - 40px)}
+.page.active{display:flex}
+
+/* ══════════════════════════════════════════════════
+   PAGE 1 — COCKPIT
+══════════════════════════════════════════════════ */
+#page-cockpit{display:grid;grid-template-columns:260px 1fr 1fr 210px;grid-template-rows:1fr 130px;gap:3px;padding:3px;background:var(--bg0)}
+
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:3px;position:relative;overflow:hidden}
+.panel::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(0,229,255,.025) 0%,transparent 70%);pointer-events:none}
+.ptitle{font-family:var(--font-hud);font-size:7px;letter-spacing:2px;color:var(--gray);position:absolute;top:5px;left:8px;z-index:5}
+
+/* Left column */
+.left-col{grid-column:1;grid-row:1/3;display:flex;flex-direction:column;gap:3px}
+.eng-block{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:8px;flex:1}
+.eng-hdr{font-family:var(--font-hud);font-size:7px;letter-spacing:1.5px;color:var(--cyan2);margin-bottom:8px;display:flex;justify-content:space-between}
+.arc-row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.arc-wrap{display:flex;flex-direction:column;align-items:center;gap:3px}
+.arc-lbl{font-family:var(--font-hud);font-size:6px;color:var(--gray);letter-spacing:1px}
+.arc-val{font-family:var(--font-mono);font-size:12px;color:var(--green);text-shadow:var(--gG)}
+.arc-val.a{color:var(--amber);text-shadow:var(--gA)}
+.lin-section{margin-top:8px;display:flex;flex-direction:column;gap:5px}
+.lin{display:grid;grid-template-columns:26px 1fr 36px;align-items:center;gap:5px}
+.lin-lbl{font-family:var(--font-hud);font-size:6px;color:var(--gray);text-align:right;letter-spacing:1px}
+.lin-bg{height:5px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}
+.lin-fill{height:100%;border-radius:2px;transition:width .8s ease}
+.lin-v{font-family:var(--font-mono);font-size:8px;text-align:right}
+
+.sys-block{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:8px}
+.sys-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.sys-item{display:flex;align-items:center;gap:4px;padding:3px 4px;border:1px solid rgba(255,255,255,.04);border-radius:2px}
+.sdot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.sdot.ok{background:var(--green);box-shadow:var(--gG)}
+.sdot.warn{background:var(--amber);box-shadow:var(--gA)}
+.sdot.fail{background:var(--red);box-shadow:var(--gR);animation:blink .5s step-end infinite}
+.sname{font-family:var(--font-hud);font-size:6px;letter-spacing:1px;color:var(--gray2)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* Right column */
+.right-col{grid-column:4;grid-row:1/3;display:flex;flex-direction:column;gap:3px}
+.fms-block{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:8px;flex:1;display:flex;flex-direction:column}
+.fms-screen{background:#010a03;border:1px solid rgba(0,230,118,.15);border-radius:2px;padding:6px;font-family:var(--font-mono);font-size:8.5px;flex:1;overflow:hidden;position:relative}
+.fms-screen::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 13px,rgba(0,230,118,.015) 13px,rgba(0,230,118,.015) 14px);pointer-events:none}
+.fml{display:flex;justify-content:space-between;line-height:1.55}
+.fml .h{color:var(--cyan2);font-size:7px;letter-spacing:1px}
+.fml .v{color:var(--green)}
+.fml .va{color:var(--amber)}
+.fml .vw{color:var(--white)}
+.fmsep{border:none;border-top:1px solid rgba(0,230,118,.1);margin:3px 0}
+.fms-kp{margin-top:6px;display:grid;grid-template-columns:repeat(5,1fr);gap:2px}
+.fmk{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:2px;font-family:var(--font-hud);font-size:6px;color:var(--gray2);padding:4px 1px;text-align:center;cursor:pointer;transition:all .15s;letter-spacing:.5px}
+.fmk:hover{background:rgba(0,229,255,.1);color:var(--cyan);border-color:var(--cyan)}
+.fmk.exec{color:var(--green);border-color:rgba(0,230,118,.3)}
+.fmk.clr{color:var(--amber)}
+
+.comms-block{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:8px}
+.freq-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.fl{font-family:var(--font-hud);font-size:6px;letter-spacing:1px;color:var(--gray)}
+.fv{font-family:var(--font-mono);font-size:10px;color:var(--cyan);text-shadow:var(--gC)}
+.fsb{font-family:var(--font-mono);font-size:8px;color:var(--gray)}
+
+/* Bottom AP bar */
+.ap-bar{grid-column:2/4;grid-row:2;background:var(--bg2);border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;padding:0 12px;gap:0;overflow:hidden}
+.ap-sec{display:flex;align-items:center;gap:8px;padding:0 12px;border-right:1px solid var(--border);height:100%}
+.ap-sec:last-child{border-right:none}
+.apb{font-family:var(--font-hud);font-size:8px;letter-spacing:1.5px;padding:4px 9px;border:1px solid rgba(255,255,255,.1);border-radius:2px;background:rgba(255,255,255,.03);color:var(--gray2);cursor:pointer;transition:all .2s;text-align:center;min-width:40px}
+.apb.on{background:rgba(0,230,118,.12);border-color:var(--green);color:var(--green);text-shadow:var(--gG)}
+.apb.cy{background:rgba(0,229,255,.12);border-color:var(--cyan);color:var(--cyan);text-shadow:var(--gC)}
+.apb.am{background:rgba(255,171,0,.12);border-color:var(--amber);color:var(--amber);text-shadow:var(--gA)}
+.ap-rdout{display:flex;flex-direction:column;align-items:center;gap:1px}
+.ap-rdlbl{font-family:var(--font-hud);font-size:6px;letter-spacing:1px;color:var(--gray)}
+.ap-rdval{font-family:var(--font-mono);font-size:13px;color:var(--cyan);text-shadow:var(--gC);cursor:default}
+.ap-rdval.g{color:var(--green);text-shadow:var(--gG)}
+.ap-rdval.a{color:var(--amber);text-shadow:var(--gA)}
+
+/* ══════════════════════════════════════════════════
+   PAGE 2 — FLIGHT PLAN EDITOR
+══════════════════════════════════════════════════ */
+#page-fpl{flex-direction:column;background:var(--bg0);padding:16px;gap:12px;overflow-y:auto}
+.fpl-header{display:flex;align-items:center;justify-content:space-between}
+.fpl-title{font-family:var(--font-hud);font-size:14px;color:var(--cyan);letter-spacing:3px;text-shadow:var(--gC)}
+.fpl-badges{display:flex;gap:8px}
+.badge{font-family:var(--font-hud);font-size:7px;padding:3px 10px;border-radius:2px;letter-spacing:1px}
+.badge-g{background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.3);color:var(--green)}
+.badge-c{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);color:var(--cyan)}
+.badge-a{background:rgba(255,171,0,.1);border:1px solid rgba(255,171,0,.3);color:var(--amber)}
+
+.fpl-grid{display:grid;grid-template-columns:1fr 340px;gap:12px;flex:1}
+.fpl-table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:4px;overflow:hidden;display:flex;flex-direction:column}
+.fpl-table-hdr{display:grid;grid-template-columns:36px 80px 80px 80px 80px 80px 1fr 80px;background:var(--bg3);border-bottom:1px solid var(--border);padding:6px 12px;font-family:var(--font-hud);font-size:7px;letter-spacing:1px;color:var(--gray)}
+.fpl-rows{flex:1;overflow-y:auto}
+.fpl-rows::-webkit-scrollbar{width:4px}
+.fpl-rows::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.wp-row{display:grid;grid-template-columns:36px 80px 80px 80px 80px 80px 1fr 80px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-family:var(--font-mono);font-size:10px;align-items:center;transition:background .15s;cursor:pointer}
+.wp-row:hover{background:rgba(0,229,255,.04)}
+.wp-row.active-wp{background:rgba(0,230,118,.06);border-left:2px solid var(--green)}
+.wp-row.passed{opacity:.4}
+.wp-idx{color:var(--gray);font-size:9px}
+.wp-id{color:var(--cyan);font-weight:bold;letter-spacing:1px}
+.wp-type{color:var(--gray);font-size:8px}
+.wp-lat,.wp-lon{color:var(--gray2)}
+.wp-alt{color:var(--green)}
+.wp-eta{color:var(--amber)}
+.wp-dtg{color:var(--white)}
+.wp-acts{display:flex;gap:4px}
+.wp-btn{font-family:var(--font-hud);font-size:6px;padding:2px 6px;border-radius:2px;cursor:pointer;border:1px solid;transition:all .15s}
+.wp-btn-d{border-color:rgba(255,23,68,.3);color:var(--red);background:rgba(255,23,68,.08)}
+.wp-btn-d:hover{background:rgba(255,23,68,.2)}
+.wp-btn-e{border-color:rgba(0,229,255,.3);color:var(--cyan);background:rgba(0,229,255,.08)}
+.wp-btn-e:hover{background:rgba(0,229,255,.2)}
+
+.fpl-right{display:flex;flex-direction:column;gap:10px}
+.fpl-perf{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:14px}
+.fpl-perf-title{font-family:var(--font-hud);font-size:8px;letter-spacing:2px;color:var(--cyan);margin-bottom:12px}
+.perf-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.perf-lbl{font-family:var(--font-hud);font-size:7px;color:var(--gray);letter-spacing:1px}
+.perf-val{font-family:var(--font-mono);font-size:12px;color:var(--green);text-shadow:var(--gG)}
+.perf-val.a{color:var(--amber);text-shadow:var(--gA)}
+.perf-val.c{color:var(--cyan);text-shadow:var(--gC)}
+
+.fpl-add{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:14px}
+.fpl-add-title{font-family:var(--font-hud);font-size:8px;letter-spacing:2px;color:var(--cyan);margin-bottom:10px}
+.fpl-input{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:3px;padding:7px 10px;font-family:var(--font-mono);font-size:11px;color:var(--white);outline:none;margin-bottom:6px;transition:border-color .2s}
+.fpl-input:focus{border-color:var(--cyan)}
+.fpl-input::placeholder{color:var(--gray)}
+.fpl-row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.btn-add{width:100%;padding:8px;background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.3);border-radius:3px;font-family:var(--font-hud);font-size:8px;letter-spacing:2px;color:var(--green);cursor:pointer;transition:all .2s;margin-top:6px}
+.btn-add:hover{background:rgba(0,230,118,.2);box-shadow:0 0 12px rgba(0,230,118,.2)}
+
+/* ══════════════════════════════════════════════════
+   PAGE 3 — ENGINE SYNOPTIC
+══════════════════════════════════════════════════ */
+#page-eng{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:3px;padding:3px;background:var(--bg0)}
+.eng-panel{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.eng-panel-title{font-family:var(--font-hud);font-size:9px;letter-spacing:3px;color:var(--cyan);text-shadow:var(--gC);margin-bottom:4px}
+.eng-params{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.eng-param{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center}
+.ep-lbl{font-family:var(--font-hud);font-size:7px;color:var(--gray);letter-spacing:1px}
+.ep-val{font-family:var(--font-mono);font-size:18px;text-shadow:var(--gG);color:var(--green)}
+.ep-val.a{color:var(--amber);text-shadow:var(--gA)}
+.ep-val.r{color:var(--red);text-shadow:var(--gR)}
+.ep-unit{font-family:var(--font-hud);font-size:7px;color:var(--gray2)}
+.eng-progress{margin-top:4px}
+.ep-bar-wrap{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.ep-bar-lbl{font-family:var(--font-hud);font-size:7px;color:var(--gray);width:24px;text-align:right}
+.ep-bar-bg{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:4px;overflow:hidden}
+.ep-bar{height:100%;border-radius:4px;transition:width .6s ease}
+.ep-bar-v{font-family:var(--font-mono);font-size:8px;width:40px;text-align:right}
+.eng-status{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:2px;font-family:var(--font-hud);font-size:7px;letter-spacing:1px}
+.eng-status.running{background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.3);color:var(--green)}
+
+/* ══════════════════════════════════════════════════
+   PAGE 4 — SYSTEMS SYNOPTIC
+══════════════════════════════════════════════════ */
+#page-sys{flex-direction:column;padding:12px;gap:10px;background:var(--bg0);overflow-y:auto}
+.sys-title{font-family:var(--font-hud);font-size:12px;letter-spacing:3px;color:var(--cyan)}
+.sys-synoptic-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sys-card{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:12px;transition:border-color .2s}
+.sys-card:hover{border-color:rgba(0,229,255,.3)}
+.sys-card.warn-card{border-color:rgba(255,171,0,.3);background:rgba(255,171,0,.03)}
+.sys-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sys-card-name{font-family:var(--font-hud);font-size:8px;letter-spacing:2px;color:var(--gray2)}
+.sys-card-status{font-family:var(--font-hud);font-size:7px;padding:2px 8px;border-radius:2px;letter-spacing:1px}
+.sc-ok{background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.3);color:var(--green)}
+.sc-warn{background:rgba(255,171,0,.1);border:1px solid rgba(255,171,0,.3);color:var(--amber)}
+.sc-fail{background:rgba(255,23,68,.1);border:1px solid rgba(255,23,68,.3);color:var(--red)}
+.sys-params{display:flex;flex-direction:column;gap:4px}
+.sp{display:flex;justify-content:space-between;align-items:center;font-size:10px}
+.sp-k{font-family:var(--font-hud);font-size:7px;color:var(--gray);letter-spacing:1px}
+.sp-v{font-family:var(--font-mono);font-size:10px}
+
+/* ══════════════════════════════════════════════════
+   PAGE 5 — ALERTS / CAS
+══════════════════════════════════════════════════ */
+#page-alerts{flex-direction:column;padding:16px;gap:12px;background:var(--bg0);overflow-y:auto}
+.alerts-hdr{display:flex;align-items:center;justify-content:space-between}
+.alerts-title{font-family:var(--font-hud);font-size:13px;letter-spacing:3px;color:var(--cyan)}
+.alert-counters{display:flex;gap:10px}
+.alert-cnt{font-family:var(--font-hud);font-size:8px;padding:4px 12px;border-radius:3px;letter-spacing:1px}
+.cnt-w{background:rgba(255,23,68,.12);border:1px solid rgba(255,23,68,.3);color:var(--red)}
+.cnt-c{background:rgba(255,171,0,.12);border:1px solid rgba(255,171,0,.3);color:var(--amber)}
+.cnt-a{background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.3);color:var(--cyan)}
+.alert-list{display:flex;flex-direction:column;gap:4px}
+.alert-item{display:grid;grid-template-columns:80px 1fr 120px 100px 100px;align-items:center;padding:8px 14px;border-radius:3px;border:1px solid;font-family:var(--font-mono);font-size:10px;transition:all .2s}
+.ai-warn{background:rgba(255,23,68,.07);border-color:rgba(255,23,68,.25)}
+.ai-caut{background:rgba(255,171,0,.07);border-color:rgba(255,171,0,.25)}
+.ai-adv{background:rgba(0,229,255,.05);border-color:rgba(0,229,255,.15)}
+.ai-sev{font-family:var(--font-hud);font-size:7px;letter-spacing:1px;padding:2px 8px;border-radius:2px;text-align:center}
+.sev-w{background:rgba(255,23,68,.2);color:var(--red)}
+.sev-c{background:rgba(255,171,0,.2);color:var(--amber)}
+.sev-a{background:rgba(0,229,255,.1);color:var(--cyan)}
+.ai-msg{color:var(--white);font-weight:bold}
+.ai-sys{color:var(--gray)}
+.ai-time{color:var(--gray2)}
+.ai-ack{font-family:var(--font-hud);font-size:7px;padding:3px 10px;border-radius:2px;cursor:pointer;border:1px solid rgba(0,230,118,.3);color:var(--green);background:rgba(0,230,118,.08);transition:all .15s;white-space:nowrap}
+.ai-ack:hover{background:rgba(0,230,118,.2)}
+.ai-ack.acked{color:var(--gray);border-color:var(--border);background:transparent;cursor:default}
+
+/* ══════════════════════════════════════════════════
+   PAGE 6 — API DOCS
+══════════════════════════════════════════════════ */
+#page-api{flex-direction:column;overflow:hidden}
+.api-layout{display:grid;grid-template-columns:220px 1fr;flex:1;overflow:hidden}
+.api-sidebar{background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:12px 0}
+.api-sidebar::-webkit-scrollbar{width:4px}
+.api-sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.api-grp{font-family:var(--font-hud);font-size:7px;letter-spacing:2px;color:var(--gray);padding:10px 14px 3px}
+.api-ep{display:flex;align-items:center;gap:7px;padding:5px 14px;cursor:pointer;font-size:11px;color:rgba(200,220,240,.6);transition:all .15s;font-family:var(--font-mono)}
+.api-ep:hover{background:rgba(99,130,255,.06);color:var(--white)}
+.api-ep.sel{background:rgba(0,229,255,.06);color:var(--cyan)}
+.mth{font-family:var(--font-hud);font-size:7px;padding:1px 5px;border-radius:2px;min-width:36px;text-align:center;font-weight:700}
+.mth-get{background:rgba(0,230,118,.15);color:var(--green);border:1px solid rgba(0,230,118,.25)}
+.mth-post{background:rgba(68,138,255,.15);color:var(--blue);border:1px solid rgba(68,138,255,.25)}
+.mth-put{background:rgba(255,171,0,.15);color:var(--amber);border:1px solid rgba(255,171,0,.25)}
+.mth-patch{background:rgba(176,106,255,.15);color:var(--purple);border:1px solid rgba(176,106,255,.25)}
+.mth-del{background:rgba(255,23,68,.15);color:var(--red);border:1px solid rgba(255,23,68,.25)}
+
+.api-main{overflow-y:auto;padding:24px 28px;background:var(--bg1)}
+.api-main::-webkit-scrollbar{width:6px}
+.api-main::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.api-endpoint-view{display:none}
+.api-endpoint-view.vis{display:block}
+.aev-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.aev-method{font-family:var(--font-hud);font-size:10px;padding:6px 14px;border-radius:3px;letter-spacing:1px}
+.aev-path{font-family:var(--font-mono);font-size:16px;color:var(--white)}
+.aev-desc{font-size:13px;color:var(--gray2);margin-bottom:20px;font-family:var(--font-ui)}
+.aev-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.aev-section-lbl{font-family:var(--font-hud);font-size:8px;letter-spacing:2px;color:var(--gray);margin-bottom:8px;text-transform:uppercase}
+.code-blk{background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.07);border-radius:5px;padding:14px;font-family:var(--font-mono);font-size:10px;line-height:1.7;overflow-x:auto}
+.ck{color:var(--cyan)}.cs{color:var(--green)}.cv{color:var(--amber)}.cc{color:var(--gray)}.cp{color:var(--purple)}
+.try-section{margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.try-url-bar{display:flex;gap:8px;margin-bottom:10px}
+.try-input{flex:1;background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:3px;padding:8px 12px;font-family:var(--font-mono);font-size:11px;color:var(--white);outline:none}
+.try-input:focus{border-color:var(--cyan)}
+.try-send{padding:8px 20px;background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);border-radius:3px;font-family:var(--font-hud);font-size:8px;letter-spacing:2px;color:var(--cyan);cursor:pointer;transition:all .2s}
+.try-send:hover{background:rgba(0,229,255,.2)}
+.try-resp{background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.07);border-radius:4px;padding:12px;font-family:var(--font-mono);font-size:10px;line-height:1.6;min-height:100px;color:var(--green)}
+
+/* ══════════════════════════════════════════════════
+   PAGE 7 — WEATHER / RADAR
+══════════════════════════════════════════════════ */
+#page-wx{display:grid;grid-template-columns:1fr 280px;gap:3px;padding:3px;background:var(--bg0)}
+.wx-radar{background:var(--bg2);border:1px solid var(--border);border-radius:3px;position:relative;overflow:hidden}
+.wx-info{display:flex;flex-direction:column;gap:3px}
+.wx-card{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:12px;flex:1}
+.wx-card-title{font-family:var(--font-hud);font-size:7px;letter-spacing:2px;color:var(--cyan);margin-bottom:10px}
+.wx-row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:11px}
+.wx-k{font-family:var(--font-hud);font-size:7px;color:var(--gray);letter-spacing:1px}
+.wx-v{font-family:var(--font-mono);font-size:11px;color:var(--white)}
+.wx-v.g{color:var(--green)}
+.wx-v.a{color:var(--amber)}
+
+/* Notification toast */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:10px 16px;font-family:var(--font-hud);font-size:9px;letter-spacing:1px;color:var(--cyan);z-index:9998;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.warn-toast{border-color:rgba(255,171,0,.4);color:var(--amber)}
+</style>
+</head>
+<body>
+
+<!-- ─── TOP BAR ──────────────────────────────────── -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    AEROSYS 9000
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="showPage('cockpit',this)"><span class="tab-icon">🛫</span>COCKPIT</div>
+    <div class="tab" onclick="showPage('fpl',this)"><span class="tab-icon">🗺</span>FLIGHT PLAN</div>
+    <div class="tab" onclick="showPage('eng',this)"><span class="tab-icon">⚙️</span>ENGINES</div>
+    <div class="tab" onclick="showPage('sys',this)"><span class="tab-icon">🔧</span>SYSTEMS</div>
+    <div class="tab" onclick="showPage('alerts',this)"><span class="tab-icon">⚠️</span>ALERTS <span id="alert-badge" style="margin-left:4px;background:rgba(255,171,0,.2);border:1px solid rgba(255,171,0,.4);border-radius:10px;padding:0 5px;font-size:7px;color:var(--amber)">2</span></div>
+    <div class="tab" onclick="showPage('api',this)"><span class="tab-icon">⚡</span>REST API</div>
+    <div class="tab" onclick="showPage('wx',this)"><span class="tab-icon">🌩</span>WEATHER</div>
+  </div>
+  <div class="topbar-right">
+    <div class="tr-item"><span>FLT</span><span class="v">AS2847</span></div>
+    <div class="tr-item"><span>ORIG</span><span class="v">KJFK</span></div>
+    <div class="tr-item"><span>DEST</span><span class="v">EGLL</span></div>
+    <div class="tr-item"><span>ALT</span><span class="v" id="hdr-alt">FL370</span></div>
+    <div class="tr-item"><span>GS</span><span class="v" id="hdr-gs">481</span></div>
+    <div class="tr-item"><span>FUEL</span><span class="w" id="hdr-fuel">62.1K</span></div>
+    <div class="clock-utc" id="clock">00:00:00Z</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE 1 — COCKPIT
+══════════════════════════════════════════════════ -->
+<div id="page-cockpit" class="page active">
+
+  <!-- LEFT -->
+  <div class="left-col">
+    <div class="eng-block">
+      <div class="eng-hdr"><span>ENGINE INSTRUMENTS</span><span style="color:var(--green);font-size:6px">2×CFM56-5B</span></div>
+      <div class="arc-row">
+        <div class="arc-wrap">
+          <div class="arc-lbl">N1 ENG 1</div>
+          <svg viewBox="0 0 78 46" width="78" height="46">
+            <path d="M8 44 A 30 30 0 0 1 70 44" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5" stroke-linecap="round"/>
+            <path id="n1a1" d="M8 44 A 30 30 0 0 1 70 44" fill="none" stroke="#00e676" stroke-width="5" stroke-linecap="round" stroke-dasharray="94.25" stroke-dashoffset="18" style="filter:drop-shadow(0 0 3px #00e676)"/>
+            <line id="n1n1" x1="39" y1="44" x2="39" y2="17" stroke="#00e676" stroke-width="2" stroke-linecap="round" transform="rotate(-72,39,44)" style="filter:drop-shadow(0 0 2px #00e676)"/>
+            <circle cx="39" cy="44" r="3" fill="#00e676" style="filter:drop-shadow(0 0 3px #00e676)"/>
+            <line x1="70" y1="44" x2="66" y2="38" stroke="#ff1744" stroke-width="2"/>
+          </svg>
+          <div class="arc-val" id="n1v1">84.6%</div>
+        </div>
+        <div class="arc-wrap">
+          <div class="arc-lbl">N1 ENG 2</div>
+          <svg viewBox="0 0 78 46" width="78" height="46">
+            <path d="M8 44 A 30 30 0 0 1 70 44" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5" stroke-linecap="round"/>
+            <path id="n1a2" d="M8 44 A 30 30 0 0 1 70 44" fill="none" stroke="#00e676" stroke-width="5" stroke-linecap="round" stroke-dasharray="94.25" stroke-dashoffset="18" style="filter:drop-shadow(0 0 3px #00e676)"/>
+            <line id="n1n2" x1="39" y1="44" x2="39" y2="17" stroke="#00e676" stroke-width="2" stroke-linecap="round" transform="rotate(-72,39,44)" style="filter:drop-shadow(0 0 2px #00e676)"/>
+            <circle cx="39" cy="44" r="3" fill="#00e676" style="filter:drop-shadow(0 0 3px #00e676)"/>
+            <line x1="70" y1="44" x2="66" y2="38" stroke="#ff1744" stroke-width="2"/>
+          </svg>
+          <div class="arc-val" id="n1v2">84.4%</div>
+        </div>
+        <div class="arc-wrap">
+          <div class="arc-lbl">EGT 1 °C</div>
+          <svg viewBox="0 0 78 46" width="78" height="46">
+            <path d="M8 44 A 30 30 0 0 1 70 44" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5" stroke-linecap="round"/>
+            <path id="egta1" d="M8 44 A 30 30 0 0 1 70 44" fill="none" stroke="#ffab00" stroke-width="5" stroke-linecap="round" stroke-dasharray="94.25" stroke-dashoffset="36" style="filter:drop-shadow(0 0 3px #ffab00)"/>
+            <line id="egtn1" x1="39" y1="44" x2="39" y2="17" stroke="#ffab00" stroke-width="2" transform="rotate(-54,39,44)"/>
+            <circle cx="39" cy="44" r="3" fill="#ffab00" style="filter:drop-shadow(0 0 3px #ffab00)"/>
+          </svg>
+          <div class="arc-val a" id="egtv1">741°</div>
+        </div>
+        <div class="arc-wrap">
+          <div class="arc-lbl">EGT 2 °C</div>
+          <svg viewBox="0 0 78 46" width="78" height="46">
+            <path d="M8 44 A 30 30 0 0 1 70 44" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5" stroke-linecap="round"/>
+            <path id="egta2" d="M8 44 A 30 30 0 0 1 70 44" fill="none" stroke="#ffab00" stroke-width="5" stroke-linecap="round" stroke-dasharray="94.25" stroke-dashoffset="36" style="filter:drop-shadow(0 0 3px #ffab00)"/>
+            <line id="egtn2" x1="39" y1="44" x2="39" y2="17" stroke="#ffab00" stroke-width="2" transform="rotate(-54,39,44)"/>
+            <circle cx="39" cy="44" r="3" fill="#ffab00" style="filter:drop-shadow(0 0 3px #ffab00)"/>
+          </svg>
+          <div class="arc-val a" id="egtv2">738°</div>
+        </div>
+      </div>
+      <div class="lin-section">
+        <div class="lin"><span class="lin-lbl">FUEL</span><div class="lin-bg"><div id="lb-fuel" class="lin-fill" style="width:62%;background:linear-gradient(90deg,#00c853,#00e676)"></div></div><span class="lin-v" id="lv-fuel" style="color:var(--green)">62.1K</span></div>
+        <div class="lin"><span class="lin-lbl">HYD</span><div class="lin-bg"><div class="lin-fill" style="width:88%;background:linear-gradient(90deg,#0091ea,#448aff)"></div></div><span class="lin-v" style="color:var(--blue)">3000</span></div>
+        <div class="lin"><span class="lin-lbl">OIL</span><div class="lin-bg"><div id="lb-oil" class="lin-fill" style="width:74%;background:linear-gradient(90deg,#e65100,#ffab00)"></div></div><span class="lin-v" id="lv-oil" style="color:var(--amber)">18.2</span></div>
+        <div class="lin"><span class="lin-lbl">FF/H</span><div class="lin-bg"><div class="lin-fill" style="width:45%;background:linear-gradient(90deg,#7b1fa2,#ba68c8)"></div></div><span class="lin-v" id="lv-ff" style="color:#ba68c8">9,640</span></div>
+      </div>
+    </div>
+    <div class="sys-block">
+      <div class="eng-hdr" style="margin-bottom:6px"><span>SYSTEMS</span></div>
+      <div class="sys-grid">
+        <div class="sys-item"><div class="sdot ok"></div><div class="sname">ELEC</div></div>
+        <div class="sys-item"><div class="sdot ok"></div><div class="sname">HYD A</div></div>
+        <div class="sys-item"><div class="sdot ok"></div><div class="sname">HYD B</div></div>
+        <div class="sys-item"><div class="sdot ok"></div><div class="sname">PNEU</div></div>
+        <div class="sys-item"><div class="sdot ok"></div><div class="sname">PRESS</div></div>
+        <div class="sys-item"><div class="sdot warn"></div><div class="sname">APU</div></div>
+        <div class="sys-item"><div class="sdot ok"></div><div class="sname">ICE</div></div>
+        <div class="sys-item"><div class="sdot ok"></div><div class="sname">BLEED</div></div>
+        <div class="sys-item"><div class="sdot ok"></div><div class="sname">IRS</div></div>
+        <div class="sys-item"><div class="sdot ok"></div><div class="sname">FUEL</div></div>
+        <div class="sys-item"><div class="sdot ok"></div><div class="sname">DOORS</div></div>
+        <div class="sys-item"><div class="sdot ok"></div><div class="sname">FIRE</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PFD -->
+  <div class="panel" style="grid-column:2;grid-row:1"><canvas id="pfd" style="width:100%;height:100%;display:block"></canvas></div>
+
+  <!-- ND -->
+  <div class="panel" style="grid-column:3;grid-row:1;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 10px 3px;border-bottom:1px solid var(--border)">
+      <span style="font-family:var(--font-hud);font-size:7px;color:var(--gray);letter-spacing:2px">NAV DISPLAY</span>
+      <div style="display:flex;gap:3px">
+        <button class="apb cy" onclick="setNDMode('ARC',this)">ARC</button>
+        <button class="apb" onclick="setNDMode('ROSE',this)">ROSE</button>
+        <button class="apb" onclick="setNDMode('PLAN',this)">PLAN</button>
+      </div>
+      <span style="font-family:var(--font-hud);font-size:7px;color:var(--gray)">RNG <span id="nd-rng" style="color:var(--cyan)">80</span>NM</span>
+    </div>
+    <div style="flex:1;position:relative"><canvas id="nd" style="width:100%;height:100%;display:block"></canvas></div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-col">
+    <div class="fms-block">
+      <div class="eng-hdr" style="margin-bottom:6px"><span style="color:var(--green)">FMGC — ACT RTE</span></div>
+      <div class="fms-screen">
+        <div class="fml"><span class="h">ORIG/DEST</span><span class="h">CI</span></div>
+        <div class="fml"><span class="vw">KJFK/EGLL</span><span class="v">35</span></div>
+        <hr class="fmsep">
+        <div class="fml"><span class="h">CRZ ALT</span><span class="h">OPT</span></div>
+        <div class="fml"><span class="v">FL370</span><span class="v">FL370</span></div>
+        <hr class="fmsep">
+        <div class="fml"><span class="h">NEXT WPT</span><span class="h">ETA</span></div>
+        <div class="fml"><span class="v" id="fms-wp">MERIT</span><span class="va" id="fms-eta">17:42Z</span></div>
+        <hr class="fmsep">
+        <div class="fml"><span class="h">WIND</span><span class="h">ISA DEV</span></div>
+        <div class="fml"><span class="va">280°/45KT</span><span class="v">-4°C</span></div>
+        <hr class="fmsep">
+        <div class="fml"><span class="h">GS</span><span class="h">EFOB</span></div>
+        <div class="fml"><span class="v" id="fms-gs">481KT</span><span class="v" id="fms-efob">41.2T</span></div>
+        <hr class="fmsep">
+        <div class="fml"><span class="h">MACH</span><span class="h">SAT</span></div>
+        <div class="fml"><span class="v" id="fms-mach">0.840</span><span class="v">-57°C</span></div>
+        <hr class="fmsep">
+        <div style="color:var(--green);font-size:8px;margin-top:3px">&gt; <span style="display:inline-block;width:6px;height:9px;background:var(--green);animation:blink 1s step-end infinite;vertical-align:middle"></span></div>
+      </div>
+      <div class="fms-kp">
+        <div class="fmk">DIR</div><div class="fmk">PROG</div><div class="fmk">PERF</div><div class="fmk">INIT</div><div class="fmk">DATA</div>
+        <div class="fmk">F-PLN</div><div class="fmk">RAD</div><div class="fmk">FUEL</div><div class="fmk">SEC</div><div class="fmk">ATC</div>
+        <div class="fmk clr">CLR</div><div class="fmk">MCDU</div><div class="fmk" style="color:var(--red)">OVFY</div><div class="fmk">MENU</div><div class="fmk exec">EXEC</div>
+      </div>
+    </div>
+    <div class="comms-block">
+      <div class="eng-hdr" style="margin-bottom:6px"><span>COMMS / NAV</span></div>
+      <div class="freq-row"><span class="fl">VHF1</span><span class="fv">132.725</span><span class="fsb">122.800</span></div>
+      <div class="freq-row"><span class="fl">VHF2</span><span class="fv">119.100</span><span class="fsb">121.500</span></div>
+      <div style="border-top:1px solid var(--border);margin:4px 0;padding-top:4px">
+        <div class="freq-row"><span class="fl">ILS</span><span class="fv" style="color:var(--green);text-shadow:var(--gG)">109.90</span><span class="fsb">IWR</span></div>
+        <div class="freq-row"><span class="fl">XPDR</span><span class="fv" style="font-size:12px">4823</span><span style="font-family:var(--font-hud);font-size:6px;color:var(--green)">ALT</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AP BAR -->
+  <div class="ap-bar">
+    <div class="ap-sec">
+      <button class="apb on" id="apb-ap" onclick="toggleAP()">A/P</button>
+      <button class="apb am" id="apb-at" onclick="toggleAT()">A/THR</button>
+      <button class="apb on" id="apb-fd" onclick="toggleFD()">F/D</button>
+    </div>
+    <div class="ap-sec">
+      <div class="ap-rdout"><div class="ap-rdlbl">SPD</div><div class="ap-rdval" id="apv-spd">280</div></div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <button class="apb cy">MACH</button>
+        <button class="apb" style="font-size:7px" id="apb-mach">.840</button>
+      </div>
+    </div>
+    <div class="ap-sec">
+      <div class="ap-rdout"><div class="ap-rdlbl">HDG</div><div class="ap-rdval g" id="apv-hdg">085</div></div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <button class="apb on" id="apb-lat">LNAV</button>
+        <button class="apb" onclick="toggleHDG()">HDG</button>
+      </div>
+    </div>
+    <div class="ap-sec">
+      <div class="ap-rdout"><div class="ap-rdlbl">ALT</div><div class="ap-rdval" id="apv-alt">37000</div></div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <button class="apb on" id="apb-vert">VNAV ALT</button>
+        <button class="apb" onclick="toggleVS()">V/S</button>
+      </div>
+    </div>
+    <div class="ap-sec">
+      <div class="ap-rdout"><div class="ap-rdlbl">V/S</div><div class="ap-rdval" id="apv-vs">+0</div></div>
+      <button class="apb cy">APPR</button>
+    </div>
+    <div class="ap-sec" style="margin-left:auto;border-left:1px solid var(--border)">
+      <div style="font-family:var(--font-hud);font-size:7px;color:var(--gray)">PHASE</div>
+      <span style="font-family:var(--font-hud);font-size:9px;color:var(--green);text-shadow:var(--gG)" id="flight-phase">CRUISE</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE 2 — FLIGHT PLAN
+══════════════════════════════════════════════════ -->
+<div id="page-fpl" class="page">
+  <div class="fpl-header">
+    <div class="fpl-title">◈ ACTIVE FLIGHT PLAN</div>
+    <div class="fpl-badges">
+      <span class="badge badge-g">KJFK → EGLL</span>
+      <span class="badge badge-c">NAT TRACK BRAVO</span>
+      <span class="badge badge-a">6 WAYPOINTS</span>
+    </div>
+  </div>
+  <div class="fpl-grid">
+    <div class="fpl-table-wrap">
+      <div class="fpl-table-hdr">
+        <span>#</span><span>IDENT</span><span>TYPE</span><span>LAT</span><span>LON</span><span>ALT</span><span>ETA</span><span>DTG</span>
+      </div>
+      <div class="fpl-rows" id="fpl-rows"></div>
+    </div>
+    <div class="fpl-right">
+      <div class="fpl-perf">
+        <div class="fpl-perf-title">PERFORMANCE DATA</div>
+        <div class="perf-row"><span class="perf-lbl">GROSS WEIGHT</span><span class="perf-val">347,820 LB</span></div>
+        <div class="perf-row"><span class="perf-lbl">FUEL ON BOARD</span><span class="perf-val a" id="pp-fob">85,400 LB</span></div>
+        <div class="perf-row"><span class="perf-lbl">TRIP FUEL</span><span class="perf-val">51,200 LB</span></div>
+        <div class="perf-row"><span class="perf-lbl">EFOB DEST</span><span class="perf-val a">32,000 LB</span></div>
+        <div class="perf-row"><span class="perf-lbl">COST INDEX</span><span class="perf-val c">35</span></div>
+        <div class="perf-row"><span class="perf-lbl">OPT FL</span><span class="perf-val c">FL370</span></div>
+        <div class="perf-row"><span class="perf-lbl">ISA DEVIATION</span><span class="perf-val">-4.0°C</span></div>
+        <div class="perf-row"><span class="perf-lbl">TAS</span><span class="perf-val c" id="pp-tas">458 KT</span></div>
+        <div class="perf-row"><span class="perf-lbl">WIND COMP</span><span class="perf-val a">+23 KT HW</span></div>
+      </div>
+      <div class="fpl-add">
+        <div class="fpl-add-title">INSERT WAYPOINT</div>
+        <input class="fpl-input" id="wp-ident" placeholder="Identifier (e.g. JANJO)" maxlength="8">
+        <div class="fpl-row2">
+          <input class="fpl-input" id="wp-lat" placeholder="Lat (e.g. 52.100)" type="number" step="0.001">
+          <input class="fpl-input" id="wp-lon" placeholder="Lon (e.g. -32.400)" type="number" step="0.001">
+        </div>
+        <div class="fpl-row2">
+          <input class="fpl-input" id="wp-alt" placeholder="Alt (e.g. FL370)">
+          <input class="fpl-input" id="wp-pos" placeholder="Position (1–6)" type="number" min="1" max="7">
+        </div>
+        <button class="btn-add" onclick="addWaypoint()">+ INSERT WAYPOINT</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE 3 — ENGINES
+══════════════════════════════════════════════════ -->
+<div id="page-eng" class="page">
+  <div class="eng-panel">
+    <div><div class="eng-panel-title">◈ ENGINE 1 — CFM56-5B4/P</div><span class="eng-status running">● RUNNING — CRZ</span></div>
+    <div class="eng-params">
+      <div class="eng-param"><div class="ep-lbl">N1</div><div class="ep-val" id="ep1-n1">84.6</div><div class="ep-unit">%</div></div>
+      <div class="eng-param"><div class="ep-lbl">N2</div><div class="ep-val" id="ep1-n2">92.1</div><div class="ep-unit">%</div></div>
+      <div class="eng-param"><div class="ep-lbl">EGT</div><div class="ep-val a" id="ep1-egt">741</div><div class="ep-unit">°C</div></div>
+      <div class="eng-param"><div class="ep-lbl">FF</div><div class="ep-val" id="ep1-ff">4,820</div><div class="ep-unit">KG/H</div></div>
+      <div class="eng-param"><div class="ep-lbl">OIL PRESS</div><div class="ep-val" id="ep1-op">62.0</div><div class="ep-unit">PSI</div></div>
+      <div class="eng-param"><div class="ep-lbl">OIL TEMP</div><div class="ep-val" id="ep1-ot">112</div><div class="ep-unit">°C</div></div>
+    </div>
+    <div class="eng-progress">
+      <div class="ep-bar-wrap"><span class="ep-bar-lbl">N1</span><div class="ep-bar-bg"><div id="epb1-n1" class="ep-bar" style="width:84%;background:linear-gradient(90deg,#00c853,#00e676);box-shadow:0 0 5px rgba(0,230,118,.3)"></div></div><span class="ep-bar-v" id="epbv1-n1" style="color:var(--green)">84.6%</span></div>
+      <div class="ep-bar-wrap"><span class="ep-bar-lbl">EGT</span><div class="ep-bar-bg"><div id="epb1-egt" class="ep-bar" style="width:61%;background:linear-gradient(90deg,#e65100,#ffab00);box-shadow:0 0 5px rgba(255,171,0,.3)"></div></div><span class="ep-bar-v" id="epbv1-egt" style="color:var(--amber)">741°C</span></div>
+      <div class="ep-bar-wrap"><span class="ep-bar-lbl">VIB</span><div class="ep-bar-bg"><div class="ep-bar" style="width:12%;background:linear-gradient(90deg,#1565c0,#448aff)"></div></div><span class="ep-bar-v" style="color:var(--blue)">0.12 IPS</span></div>
+    </div>
+  </div>
+  <div class="eng-panel">
+    <div><div class="eng-panel-title">◈ ENGINE 2 — CFM56-5B4/P</div><span class="eng-status running">● RUNNING — CRZ</span></div>
+    <div class="eng-params">
+      <div class="eng-param"><div class="ep-lbl">N1</div><div class="ep-val" id="ep2-n1">84.4</div><div class="ep-unit">%</div></div>
+      <div class="eng-param"><div class="ep-lbl">N2</div><div class="ep-val" id="ep2-n2">91.8</div><div class="ep-unit">%</div></div>
+      <div class="eng-param"><div class="ep-lbl">EGT</div><div class="ep-val a" id="ep2-egt">738</div><div class="ep-unit">°C</div></div>
+      <div class="eng-param"><div class="ep-lbl">FF</div><div class="ep-val" id="ep2-ff">4,810</div><div class="ep-unit">KG/H</div></div>
+      <div class="eng-param"><div class="ep-lbl">OIL PRESS</div><div class="ep-val" id="ep2-op">61.0</div><div class="ep-unit">PSI</div></div>
+      <div class="eng-param"><div class="ep-lbl">OIL TEMP</div><div class="ep-val" id="ep2-ot">111</div><div class="ep-unit">°C</div></div>
+    </div>
+    <div class="eng-progress">
+      <div class="ep-bar-wrap"><span class="ep-bar-lbl">N1</span><div class="ep-bar-bg"><div id="epb2-n1" class="ep-bar" style="width:84%;background:linear-gradient(90deg,#00c853,#00e676);box-shadow:0 0 5px rgba(0,230,118,.3)"></div></div><span class="ep-bar-v" id="epbv2-n1" style="color:var(--green)">84.4%</span></div>
+      <div class="ep-bar-wrap"><span class="ep-bar-lbl">EGT</span><div class="ep-bar-bg"><div id="epb2-egt" class="ep-bar" style="width:60%;background:linear-gradient(90deg,#e65100,#ffab00);box-shadow:0 0 5px rgba(255,171,0,.3)"></div></div><span class="ep-bar-v" id="epbv2-egt" style="color:var(--amber)">738°C</span></div>
+      <div class="ep-bar-wrap"><span class="ep-bar-lbl">VIB</span><div class="ep-bar-bg"><div class="ep-bar" style="width:10%;background:linear-gradient(90deg,#1565c0,#448aff)"></div></div><span class="ep-bar-v" style="color:var(--blue)">0.10 IPS</span></div>
+    </div>
+  </div>
+  <div class="eng-panel" style="grid-column:1/3;display:flex;flex-direction:row;gap:24px;padding:20px">
+    <div style="flex:1">
+      <div class="eng-panel-title" style="margin-bottom:10px">FUEL SYSTEM</div>
+      <div class="eng-params" style="grid-template-columns:1fr 1fr 1fr 1fr">
+        <div class="eng-param"><div class="ep-lbl">CTR TANK</div><div class="ep-val a" id="efuel-ctr">22,400</div><div class="ep-unit">LB</div></div>
+        <div class="eng-param"><div class="ep-lbl">L WING</div><div class="ep-val" id="efuel-lw">31,500</div><div class="ep-unit">LB</div></div>
+        <div class="eng-param"><div class="ep-lbl">R WING</div><div class="ep-val" id="efuel-rw">31,500</div><div class="ep-unit">LB</div></div>
+        <div class="eng-param"><div class="ep-lbl">TOTAL</div><div class="ep-val" id="efuel-tot">85,400</div><div class="ep-unit">LB</div></div>
+      </div>
+    </div>
+    <div style="flex:1">
+      <div class="eng-panel-title" style="margin-bottom:10px">FADEC STATUS</div>
+      <div class="eng-params" style="grid-template-columns:1fr 1fr">
+        <div class="eng-param"><div class="ep-lbl">ENG 1 FADEC</div><div class="ep-val" style="font-size:12px;color:var(--green)">ACTIVE A</div></div>
+        <div class="eng-param"><div class="ep-lbl">ENG 2 FADEC</div><div class="ep-val" style="font-size:12px;color:var(--green)">ACTIVE A</div></div>
+        <div class="eng-param"><div class="ep-lbl">THR RATING</div><div class="ep-val" style="font-size:14px">CRZ</div></div>
+        <div class="eng-param"><div class="ep-lbl">FLEX TEMP</div><div class="ep-val a" style="font-size:14px">58°C</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 4 — SYSTEMS -->
+<div id="page-sys" class="page">
+  <div class="alerts-hdr"><div class="alerts-title">◈ SYSTEMS SYNOPTIC</div></div>
+  <div class="sys-synoptic-grid" id="sys-synoptic"></div>
+</div>
+
+<!-- PAGE 5 — ALERTS -->
+<div id="page-alerts" class="page">
+  <div class="alerts-hdr">
+    <div class="alerts-title">◈ CAUTIONS & WARNINGS</div>
+    <div class="alert-counters">
+      <span class="alert-cnt cnt-w" id="cnt-w">0 WARNING</span>
+      <span class="alert-cnt cnt-c" id="cnt-c">1 CAUTION</span>
+      <span class="alert-cnt cnt-a" id="cnt-a">1 ADVISORY</span>
+    </div>
+  </div>
+  <div class="alert-list" id="alert-list"></div>
+</div>
+
+<!-- PAGE 6 — API DOCS -->
+<div id="page-api" class="page">
+  <div style="background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:12px">
+    <span style="font-family:var(--font-hud);font-size:10px;color:var(--cyan);letter-spacing:2px">◈ REST API — OpenAPI 3.1</span>
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--green);background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.2);border-radius:3px;padding:2px 10px">v2.1.0</span>
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--gray)">Base: https://aerosys-9000.vercel.app/api/v2</span>
+    <button onclick="copyBaseURL()" style="margin-left:auto;font-family:var(--font-hud);font-size:7px;padding:4px 12px;border:1px solid var(--border);border-radius:2px;background:transparent;color:var(--gray);cursor:pointer">COPY URL</button>
+  </div>
+  <div class="api-layout">
+    <div class="api-sidebar" id="api-sidebar"></div>
+    <div class="api-main" id="api-main"></div>
+  </div>
+</div>
+
+<!-- PAGE 7 — WEATHER -->
+<div id="page-wx" class="page">
+  <div class="wx-radar panel">
+    <div class="ptitle">WEATHER RADAR — WXR-2100</div>
+    <canvas id="wx-canvas" style="width:100%;height:100%;display:block"></canvas>
+  </div>
+  <div class="wx-info">
+    <div class="wx-card">
+      <div class="wx-card-title">DESTINATION — EGLL</div>
+      <div class="wx-row"><span class="wx-k">METAR TIME</span><span class="wx-v">1350Z</span></div>
+      <div class="wx-row"><span class="wx-k">WIND</span><span class="wx-v">220°/12KT</span></div>
+      <div class="wx-row"><span class="wx-k">VISIBILITY</span><span class="wx-v g">9999M</span></div>
+      <div class="wx-row"><span class="wx-k">CLOUD</span><span class="wx-v">FEW018 BKN040</span></div>
+      <div class="wx-row"><span class="wx-k">TEMP / DP</span><span class="wx-v">08/04°C</span></div>
+      <div class="wx-row"><span class="wx-k">QNH</span><span class="wx-v g">1018 hPa</span></div>
+      <div class="wx-row"><span class="wx-k">WX</span><span class="wx-v">-RA SCT</span></div>
+    </div>
+    <div class="wx-card">
+      <div class="wx-card-title">EN-ROUTE SIGNIFICANT WX</div>
+      <div class="wx-row"><span class="wx-k">TURB LEVEL</span><span class="wx-v a">MODERATE FL340-380</span></div>
+      <div class="wx-row"><span class="wx-k">CB ACTIVITY</span><span class="wx-v a">ISOLATED 45W</span></div>
+      <div class="wx-row"><span class="wx-k">JET STREAM</span><span class="wx-v">280KT @ FL360</span></div>
+      <div class="wx-row"><span class="wx-k">ICING</span><span class="wx-v g">NIL FL350+</span></div>
+      <div class="wx-row"><span class="wx-k">SIGMET</span><span class="wx-v g">NONE ACTIVE</span></div>
+    </div>
+    <div class="wx-card">
+      <div class="wx-card-title">NAT TRACK DATA</div>
+      <div class="wx-row"><span class="wx-k">TRACK</span><span class="wx-v g">BRAVO</span></div>
+      <div class="wx-row"><span class="wx-k">ENTRY</span><span class="wx-v">59N 030W</span></div>
+      <div class="wx-row"><span class="wx-k">EXIT</span><span class="wx-v">57N 010W</span></div>
+      <div class="wx-row"><span class="wx-k">MACH</span><span class="wx-v">M0.84</span></div>
+      <div class="wx-row"><span class="wx-k">FL RANGE</span><span class="wx-v">350–390</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+const S = {
+  pitch:1.2,roll:2.5,hdg:85,trk:86,
+  ias:280,mach:0.840,tas:458,gs:481,
+  alt:37000,vs:0,selAlt:37000,
+  n1:[84.6,84.4],egt:[741,738],n2:[92.1,91.8],ff:[4820,4810],
+  fuel:62.1,t:0,ndMode:'ARC',apOn:true,atOn:true,fdOn:true,
+  lnav:true,vnav:true,dist:2847,
+  waypoints:[
+    {id:'MERIT',lat:47.38,lon:-42.74,alt:'FL370',eta:'17:42Z',dtg:42,type:'FIX'},
+    {id:'JANJO',lat:50.12,lon:-38.20,alt:'FL370',eta:'18:05Z',dtg:164,type:'FIX'},
+    {id:'BEDRA',lat:52.80,lon:-27.60,alt:'FL370',eta:'18:48Z',dtg:387,type:'FIX'},
+    {id:'SOMAX',lat:54.20,lon:-18.40,alt:'FL370',eta:'19:22Z',dtg:621,type:'FIX'},
+    {id:'MALOT',lat:55.10,lon:-8.80,alt:'FL350',eta:'20:01Z',dtg:879,type:'FIX'},
+    {id:'EGLL',lat:51.47,lon:-0.46,alt:'---',eta:'20:58Z',dtg:1243,type:'ARPT'},
+  ],
+  activeWP:0
+};
+
+function noise(t,f=1,a=1){return a*(Math.sin(t*f)*.5+Math.sin(t*f*1.7)*.3+Math.sin(t*f*2.9)*.2)}
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+function showPage(id, tab) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  tab.classList.add('active');
+  if(id==='fpl') renderFPL();
+  if(id==='sys') renderSys();
+  if(id==='alerts') renderAlerts();
+  if(id==='api') renderAPI();
+}
+
+function toast(msg,warn=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast'+(warn?' warn-toast':'');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+// ═══════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════
+function tick(){
+  const n=new Date();
+  const h=String(n.getUTCHours()).padStart(2,'0');
+  const m=String(n.getUTCMinutes()).padStart(2,'0');
+  const s=String(n.getUTCSeconds()).padStart(2,'0');
+  document.getElementById('clock').textContent=`${h}:${m}:${s}Z`;
+}
+
+// ═══════════════════════════════════════════════════
+// SIMULATION
+// ═══════════════════════════════════════════════════
+let lastT=0,simT=0;
+function simulate(dt){
+  simT+=dt; S.t=simT;
+  S.pitch=1.2+noise(simT*.5,1,.18);
+  S.roll=2.5+noise(simT*.3,.7,.35);
+  S.hdg+=noise(simT*.1,.5,.009);
+  S.hdg=((S.hdg%360)+360)%360;
+  S.trk=S.hdg+1.1;
+  S.ias=280+noise(simT*.8,1.2,1.6);
+  S.mach=0.840+noise(simT*.8,1.2,.002);
+  S.gs=Math.round(481+noise(simT*.4,.8,4));
+  S.n1[0]=84.6+noise(simT*1.2,2,.35);
+  S.n1[1]=84.4+noise(simT*.9,1.8,.35);
+  S.egt[0]=741+noise(simT*.7,1.5,5);
+  S.egt[1]=738+noise(simT*.6,1.3,5);
+  S.alt=37000+noise(simT*.2,.4,10);
+  S.vs=noise(simT*.5,.8,35);
+  S.fuel=Math.max(10,62.1-simT*.002);
+  S.dist=Math.max(0,Math.round(2847-simT*.13));
+
+  // Update DOM elements
+  setTxt('apv-spd',Math.round(S.ias));
+  setTxt('apv-hdg',Math.round(S.hdg).toString().padStart(3,'0'));
+  setTxt('apv-alt',Math.round(S.alt));
+  setTxt('apv-vs',(S.vs>=0?'+':'')+Math.round(S.vs));
+  setTxt('fms-gs',S.gs+'KT');
+  setTxt('fms-mach',S.mach.toFixed(3));
+  setTxt('hdr-alt','FL'+Math.round(S.alt/100));
+  setTxt('hdr-gs',S.gs);
+  setTxt('hdr-fuel',S.fuel.toFixed(1)+'K');
+  setTxt('apb-mach','.'+Math.round(S.mach*1000).toString().padStart(3,'0'));
+
+  // Engine gauges
+  updateEngGauges();
+
+  // Engine page
+  setTxt('ep1-n1',S.n1[0].toFixed(1));setTxt('ep2-n1',S.n1[1].toFixed(1));
+  setTxt('ep1-egt',Math.round(S.egt[0]));setTxt('ep2-egt',Math.round(S.egt[1]));
+  setTxt('ep1-n2',(92.1+noise(simT*.5,1,.3)).toFixed(1));
+  setTxt('ep2-n2',(91.8+noise(simT*.4,1,.3)).toFixed(1));
+  pct('epb1-n1',S.n1[0]);setTxt('epbv1-n1',S.n1[0].toFixed(1)+'%');
+  pct('epb2-n1',S.n1[1]);setTxt('epbv2-n1',S.n1[1].toFixed(1)+'%');
+  const e1pct=(S.egt[0]-600)/300*100;const e2pct=(S.egt[1]-600)/300*100;
+  pct('epb1-egt',e1pct);setTxt('epbv1-egt',Math.round(S.egt[0])+'°C');
+  pct('epb2-egt',e2pct);setTxt('epbv2-egt',Math.round(S.egt[1])+'°C');
+
+  // Fuel tanks (slowly burning)
+  const total=S.fuel*1000;
+  const ctr=Math.max(0,22400-simT*2);
+  setTxt('efuel-ctr',Math.round(ctr).toLocaleString());
+  setTxt('efuel-tot',Math.round(total*1.38).toLocaleString());
+}
+
+function setTxt(id,v){const e=document.getElementById(id);if(e)e.textContent=v}
+function pct(id,v){const e=document.getElementById(id);if(e)e.style.width=Math.min(100,Math.max(0,v))+'%'}
+
+function updateEngGauges(){
+  const T=94.25;
+  [1,2].forEach(i=>{
+    const n=S.n1[i-1];
+    const off=T-(n/100)*T;
+    const arc=document.getElementById(`n1a${i}`);
+    if(arc)arc.style.strokeDashoffset=off;
+    const ndl=document.getElementById(`n1n${i}`);
+    if(ndl)ndl.setAttribute('transform',`rotate(${-90+(n/100)*180},39,44)`);
+    setTxt(`n1v${i}`,n.toFixed(1)+'%');
+    const e=S.egt[i-1];
+    const pct=(e-600)/300;
+    const eoff=T-pct*T;
+    const ea=document.getElementById(`egta${i}`);
+    if(ea)ea.style.strokeDashoffset=Math.max(0,eoff);
+    const en=document.getElementById(`egtn${i}`);
+    if(en)en.setAttribute('transform',`rotate(${-90+pct*180},39,44)`);
+    setTxt(`egtv${i}`,Math.round(e)+'°');
+  });
+  // Fuel bar
+  pct('lb-fuel',S.fuel);
+  setTxt('lv-fuel',S.fuel.toFixed(1)+'K');
+  setTxt('lv-ff',Math.round(S.n1[0]*114+S.n1[1]*113));
+}
+
+// ═══════════════════════════════════════════════════
+// PFD
+// ═══════════════════════════════════════════════════
+let pfdC,pfdX;
+function initPFD(){
+  pfdC=document.getElementById('pfd');
+  pfdX=pfdC.getContext('2d');
+}
+function resizePFD(){
+  const p=pfdC.parentElement;
+  pfdC.width=p.clientWidth;pfdC.height=p.clientHeight;
+}
+function drawPFD(){
+  const ctx=pfdX,w=pfdC.width,h=pfdC.height;
+  if(!ctx||w<10||h<10)return;
+  ctx.clearRect(0,0,w,h);
+  const cx=w/2-30,cy=h/2;
+  const aW=Math.min(w*.55,270),aH=h*.60;
+  const aX=cx-aW/2,aY=cy-aH/2+8;
+
+  ctx.save();
+  ctx.beginPath();ctx.rect(aX,aY,aW,aH);ctx.clip();
+  const pp=S.pitch*(aH/60);
+  const rr=S.roll*Math.PI/180;
+  ctx.translate(cx,cy+8);ctx.rotate(-rr);ctx.translate(0,pp);
+  const sky=ctx.createLinearGradient(0,-aH*2,0,0);
+  sky.addColorStop(0,'#0a1d3d');sky.addColorStop(1,'#1a4875');
+  ctx.fillStyle=sky;ctx.fillRect(-aW*3,-aH*3,aW*6,aH*3);
+  const gnd=ctx.createLinearGradient(0,0,0,aH*3);
+  gnd.addColorStop(0,'#3d2605');gnd.addColorStop(1,'#150e00');
+  ctx.fillStyle=gnd;ctx.fillRect(-aW*3,0,aW*6,aH*3);
+  ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(-aW*2,0);ctx.lineTo(aW*2,0);ctx.stroke();
+  // Pitch ladder
+  ctx.font='9px "Share Tech Mono"';ctx.fillStyle='white';ctx.textAlign='center';
+  for(let p=-30;p<=30;p+=5){
+    if(p===0)continue;
+    const py=-p*(aH/60),tw=p%10===0?44:22;
+    ctx.strokeStyle='rgba(255,255,255,.65)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(-tw/2,py);ctx.lineTo(tw/2,py);ctx.stroke();
+    if(p%10===0){ctx.fillText(Math.abs(p),-tw/2-11,py+3);ctx.fillText(Math.abs(p),tw/2+11,py+3)}
+  }
+  ctx.restore();
+
+  // Bank arc
+  ctx.save();ctx.translate(cx,cy+8);
+  const ar=aH*.48;
+  [10,20,30,45,60].forEach(a=>{
+    [-a,a].forEach(ang=>{
+      const rad=(ang-90)*Math.PI/180;
+      ctx.save();ctx.rotate(rad);ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(0,-ar);ctx.lineTo(0,-ar+(a%30===0?10:6));ctx.stroke();ctx.restore();
+    });
+  });
+  ctx.save();ctx.rotate(-S.roll*Math.PI/180);ctx.fillStyle='white';
+  ctx.beginPath();ctx.moveTo(0,-ar+2);ctx.lineTo(-6,-ar+13);ctx.lineTo(6,-ar+13);ctx.closePath();ctx.fill();ctx.restore();
+  ctx.restore();
+
+  // Aircraft symbol
+  ctx.save();ctx.translate(cx,cy+8);ctx.strokeStyle='rgba(255,255,200,.9)';ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.moveTo(-38,4);ctx.lineTo(38,4);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-2,-12);ctx.lineTo(-2,12);ctx.lineTo(2,12);ctx.lineTo(2,-12);ctx.closePath();
+  ctx.fillStyle='rgba(255,255,200,.9)';ctx.fill();
+  ctx.beginPath();ctx.moveTo(-14,12);ctx.lineTo(14,12);ctx.stroke();ctx.restore();
+
+  // Speed tape
+  const spX=aX-52,spW=48;
+  ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(spX,aY,spW,aH);
+  ctx.save();ctx.rect(spX,aY,spW,aH);ctx.clip();
+  const sr=60;ctx.font='9px "Share Tech Mono"';ctx.fillStyle='rgba(255,255,255,.65)';ctx.textAlign='right';
+  for(let sp=Math.floor((S.ias-sr/2)/10)*10;sp<=S.ias+sr/2;sp+=10){
+    const sy=cy+8-(sp-S.ias)*(aH/sr);
+    ctx.strokeStyle='rgba(255,255,255,.28)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(spX+spW-7,sy);ctx.lineTo(spX+spW,sy);ctx.stroke();
+    ctx.fillText(sp,spX+spW-9,sy+3);
+  }
+  ctx.strokeStyle='#ff1744';ctx.lineWidth=3;
+  ctx.beginPath();const vmY=cy+8-(340-S.ias)*(aH/sr);ctx.moveTo(spX,vmY);ctx.lineTo(spX+spW,vmY);ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle='rgba(0,0,0,.92)';ctx.strokeStyle='#00e676';ctx.lineWidth=1.5;
+  ctx.fillRect(spX-2,cy+8-11,spW+2,22);ctx.strokeRect(spX-2,cy+8-11,spW+2,22);
+  ctx.font='bold 15px "Share Tech Mono"';ctx.fillStyle='#00e676';ctx.textAlign='center';
+  ctx.fillText(Math.round(S.ias),spX+spW/2-1,cy+8+5);
+  ctx.font='9px "Share Tech Mono"';ctx.fillStyle='#00e5ff';
+  ctx.fillText('M'+S.mach.toFixed(3),spX+spW/2,aY+aH+13);
+
+  // Alt tape
+  const alX=cx+aW/2+4,alW=52;
+  ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(alX,aY,alW,aH);
+  ctx.save();ctx.rect(alX,aY,alW,aH);ctx.clip();
+  const alr=1000;ctx.font='9px "Share Tech Mono"';ctx.fillStyle='rgba(255,255,255,.65)';ctx.textAlign='left';
+  for(let al=Math.floor((S.alt-alr/2)/100)*100;al<=S.alt+alr/2;al+=100){
+    const ay=cy+8-(al-S.alt)*(aH/alr);
+    ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(alX,ay);ctx.lineTo(alX+8,ay);ctx.stroke();
+    if(al%500===0)ctx.fillText(al>=10000?al:'0'+al,alX+10,ay+3);
+  }
+  ctx.restore();
+  ctx.fillStyle='rgba(0,0,0,.92)';ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.5;
+  ctx.fillRect(alX-2,cy+8-11,alW+20,22);ctx.strokeRect(alX-2,cy+8-11,alW+20,22);
+  ctx.font='bold 13px "Share Tech Mono"';ctx.fillStyle='#00e5ff';ctx.textAlign='center';
+  ctx.fillText(Math.round(S.alt).toString().padStart(5,'0'),alX+alW/2+8,cy+8+5);
+  ctx.font='10px "Share Tech Mono"';ctx.fillStyle='#00e5ff';
+  ctx.fillText(S.selAlt.toString().padStart(5,'0'),alX+alW/2+8,aY-7);
+
+  // Heading
+  const hdY=aY+aH+7,hdW=aW,hdH=30;
+  ctx.fillStyle='rgba(0,0,0,.72)';ctx.fillRect(aX,hdY,hdW,hdH);
+  ctx.save();ctx.rect(aX,hdY,hdW,hdH);ctx.clip();
+  const hdcx=aX+hdW/2;
+  ctx.font='9px "Share Tech Mono"';ctx.fillStyle='rgba(255,255,255,.6)';ctx.textAlign='center';
+  for(let d=S.hdg-18;d<=S.hdg+18;d++){
+    if(d%5===0){
+      const dx=hdcx+(d-S.hdg)*(hdW/36);
+      ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(dx,hdY);ctx.lineTo(dx,hdY+(d%10===0?10:6));ctx.stroke();
+      if(d%10===0){
+        let lb=((d%360)+360)%360;if(lb===0)lb=360;
+        ctx.fillText(lb.toString().padStart(3,'0'),dx,hdY+22);
+      }
+    }
+  }
+  ctx.restore();
+  ctx.strokeStyle='#ffff00';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(hdcx,hdY);ctx.lineTo(hdcx-5,hdY-7);ctx.lineTo(hdcx+5,hdY-7);ctx.closePath();ctx.stroke();
+  ctx.fillStyle='rgba(0,0,0,.9)';ctx.strokeStyle='#ffff00';ctx.lineWidth=1.5;
+  ctx.fillRect(hdcx-18,hdY+14,36,15);ctx.strokeRect(hdcx-18,hdY+14,36,15);
+  ctx.font='bold 11px "Share Tech Mono"';ctx.fillStyle='#ffff00';ctx.textAlign='center';
+  ctx.fillText(Math.round(S.hdg).toString().padStart(3,'0')+'°',hdcx,hdY+25);
+
+  // FMA
+  ctx.font='bold 10px "Orbitron"';ctx.textAlign='center';
+  ctx.fillStyle=S.atOn?'#00e5ff':'rgba(255,255,255,.25)';ctx.fillText('MACH',aX+aW*.15,12);
+  ctx.fillStyle=S.lnav?'#00e676':'#ffff00';ctx.fillText('LNAV',aX+aW*.5,12);
+  ctx.fillStyle=S.vnav?'#00e676':'#ffff00';ctx.fillText('ALT CRZ',aX+aW*.83,12);
+  if(S.apOn){ctx.font='bold 9px "Orbitron"';ctx.fillStyle='#00e676';ctx.fillText('AP',aX+aW-14,12);ctx.fillText('FD',aX+aW-14,23)}
+}
+
+// ═══════════════════════════════════════════════════
+// ND
+// ═══════════════════════════════════════════════════
+let ndC,ndX;
+function initND(){ndC=document.getElementById('nd');ndX=ndC.getContext('2d')}
+function resizeND(){const p=ndC.parentElement;ndC.width=p.clientWidth;ndC.height=p.clientHeight}
+function setNDMode(m,btn){
+  S.ndMode=m;
+  document.querySelectorAll('.nd-header .apb,.nd-header button').forEach(b=>{b.className='apb'});
+  if(btn)btn.className='apb cy';
+}
+function drawND(){
+  const ctx=ndX,w=ndC.width,h=ndC.height;
+  if(!ctx||w<10)return;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#020912';ctx.fillRect(0,0,w,h);
+  const cx=w/2,cy=S.ndMode==='ARC'?h*.62:h/2;
+  const r=Math.min(w,h)*(S.ndMode==='ARC'?.40:.42);
+
+  // Terrain bg
+  if(S.ndMode==='ARC'){
+    ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI,0);ctx.lineTo(cx,cy);ctx.closePath();ctx.clip();
+    const tg=ctx.createRadialGradient(cx,cy,r*.1,cx,cy,r*1.1);
+    tg.addColorStop(0,'rgba(10,22,40,0)');tg.addColorStop(1,'rgba(0,18,36,.4)');
+    ctx.fillStyle=tg;ctx.fillRect(cx-r,cy-r,r*2,r);ctx.restore();
+  }
+
+  // Range rings
+  [.5,1].forEach((f,i)=>{
+    ctx.strokeStyle='rgba(0,229,255,.1)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();
+    if(S.ndMode==='ARC')ctx.arc(cx,cy,r*f,-Math.PI,0);
+    else ctx.arc(cx,cy,r*f,0,Math.PI*2);
+    ctx.stroke();ctx.setLineDash([]);
+    ctx.font='8px "Share Tech Mono"';ctx.fillStyle='rgba(0,229,255,.4)';ctx.textAlign='left';
+    ctx.fillText((80*(i+1)/2)+'NM',cx+r*f+2,cy+4);
+  });
+
+  // Compass
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(-S.hdg*Math.PI/180);
+  for(let d=0;d<360;d+=5){
+    const rad=d*Math.PI/180;
+    const inner=r-(d%30===0?13:d%10===0?9:5);
+    ctx.strokeStyle=d%30===0?'rgba(255,255,255,.7)':'rgba(255,255,255,.25)';
+    ctx.lineWidth=d%30===0?1.5:1;
+    ctx.beginPath();ctx.moveTo(Math.sin(rad)*inner,-Math.cos(rad)*inner);
+    ctx.lineTo(Math.sin(rad)*r,-Math.cos(rad)*r);ctx.stroke();
+    if(d%30===0){
+      ctx.save();ctx.translate(Math.sin(rad)*(r-18),-Math.cos(rad)*(r-18));ctx.rotate(rad);
+      ctx.font='bold 9px "Share Tech Mono"';ctx.fillStyle='rgba(255,255,255,.75)';ctx.textAlign='center';
+      ctx.fillText(d===0?'N':d===90?'E':d===180?'S':d===270?'W':d+'',0,3);ctx.restore();
+    }
+  }
+  ctx.restore();
+
+  // Compass arc border
+  ctx.strokeStyle='rgba(0,229,255,.55)';ctx.lineWidth=2;ctx.beginPath();
+  if(S.ndMode==='ARC')ctx.arc(cx,cy,r,-Math.PI,0);else ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.stroke();
+
+  // Route
+  const sc=r/80;
+  const pts=S.waypoints.map(w=>({x:cx+(w.lon+42.74)*sc*14,y:cy-(w.lat-47.38)*sc*18,name:w.id}));
+  ctx.strokeStyle='rgba(0,230,118,.65)';ctx.lineWidth=2;ctx.beginPath();
+  pts.forEach((p,i)=>{if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y)});ctx.stroke();
+  pts.forEach((p,i)=>{
+    if(p.y<2||p.y>h+20||p.x<-20||p.x>w+20)return;
+    ctx.strokeStyle=i===S.activeWP?'#00e676':'rgba(0,229,255,.7)';
+    ctx.lineWidth=i===S.activeWP?2:1.5;
+    ctx.beginPath();ctx.moveTo(p.x,p.y-7);ctx.lineTo(p.x+5,p.y+4);ctx.lineTo(p.x-5,p.y+4);ctx.closePath();ctx.stroke();
+    ctx.font='8px "Share Tech Mono"';ctx.fillStyle=i===S.activeWP?'#00e676':'rgba(0,229,255,.7)';
+    ctx.textAlign='left';ctx.fillText(p.name,p.x+7,p.y+3);
+  });
+
+  // Weather blobs
+  [{x:cx+r*.28,y:cy-r*.48,r:22,h:.8},{x:cx-r*.18,y:cy-r*.25,r:15,h:.4},{x:cx+r*.5,y:cy-r*.2,r:28,h:.95}]
+  .forEach(b=>{
+    const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);
+    if(b.h>.7){g.addColorStop(0,'rgba(255,60,0,.35)');g.addColorStop(.5,'rgba(255,140,0,.2)');g.addColorStop(1,'rgba(255,200,0,0)')}
+    else{g.addColorStop(0,'rgba(255,200,0,.25)');g.addColorStop(1,'rgba(255,200,0,0)')}
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
+  });
+
+  // TCAS
+  [{dx:40,dy:-80,a:'+10',t:'proximate'},{dx:-55,dy:-110,a:'-22',t:'traffic'},{dx:75,dy:-55,a:'+05',t:'traffic'}]
+  .forEach(tgt=>{
+    const tx=cx+tgt.dx*(r/80)*2,ty=cy+tgt.dy*(r/80)*2;
+    if(tx<0||ty<0||tx>w||ty>h)return;
+    ctx.strokeStyle=tgt.t==='proximate'?'#ffab00':'rgba(255,255,255,.45)';
+    ctx.fillStyle=tgt.t==='proximate'?'rgba(255,171,0,.18)':'rgba(255,255,255,.08)';
+    ctx.lineWidth=1.5;const s=7;
+    ctx.beginPath();ctx.moveTo(tx,ty-s);ctx.lineTo(tx+s,ty+s);ctx.lineTo(tx-s,ty+s);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.font='7px "Share Tech Mono"';ctx.fillStyle=tgt.t==='proximate'?'#ffab00':'rgba(255,255,255,.45)';
+    ctx.textAlign='left';ctx.fillText(tgt.a,tx+s+2,ty+3);
+  });
+
+  // Aircraft
+  ctx.strokeStyle='#ffff00';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx,cy-13);ctx.lineTo(cx,cy+9);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-17,cy+2);ctx.lineTo(cx+17,cy+2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-8,cy+9);ctx.lineTo(cx+8,cy+9);ctx.stroke();
+
+  // Data
+  ctx.font='9px "Share Tech Mono"';ctx.textAlign='left';
+  ctx.fillStyle='#00e5ff';ctx.fillText('GS: '+S.gs+'KT',8,h-34);
+  ctx.fillStyle='#ffab00';ctx.fillText('TAS: '+Math.round(S.tas)+'KT',8,h-22);
+  ctx.fillStyle='rgba(255,255,255,.4)';ctx.fillText('WIND 280°/45KT',8,h-10);
+  ctx.textAlign='right';
+  ctx.fillStyle='#00e676';ctx.fillText('HDG: '+Math.round(S.hdg).toString().padStart(3,'0')+'°',w-8,h-34);
+  ctx.fillStyle='rgba(255,255,255,.4)';ctx.fillText('DTG: '+S.dist+'NM',w-8,h-10);
+
+  // Heading box
+  ctx.fillStyle='rgba(0,0,0,.87)';ctx.strokeStyle='#ffff00';ctx.lineWidth=1.5;
+  ctx.fillRect(cx-24,5,48,18);ctx.strokeRect(cx-24,5,48,18);
+  ctx.font='bold 11px "Share Tech Mono"';ctx.fillStyle='#ffff00';ctx.textAlign='center';
+  ctx.fillText(Math.round(S.hdg).toString().padStart(3,'0')+'°',cx,19);
+}
+
+// ═══════════════════════════════════════════════════
+// WEATHER RADAR
+// ═══════════════════════════════════════════════════
+let wxC,wxX,wxT=0;
+function initWX(){wxC=document.getElementById('wx-canvas');if(wxC)wxX=wxC.getContext('2d')}
+function resizeWX(){if(wxC){const p=wxC.parentElement;wxC.width=p.clientWidth;wxC.height=p.clientHeight}}
+function drawWX(){
+  if(!wxX||!wxC||wxC.width<10)return;
+  wxT+=0.008;
+  const ctx=wxX,w=wxC.width,h=wxC.height,cx=w/2,cy=h*.55,r=Math.min(w,h)*.45;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#020610';ctx.fillRect(0,0,w,h);
+
+  // Sweep
+  const sweepAngle=(wxT*2)%(Math.PI*2);
+  const sg=ctx.createConicalGradient?null:null;
+  ctx.save();ctx.translate(cx,cy);
+  ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,r,sweepAngle-0.6,sweepAngle);ctx.closePath();
+  ctx.fillStyle='rgba(0,230,118,.12)';ctx.fill();
+  ctx.strokeStyle='rgba(0,230,118,.6)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(sweepAngle)*r,Math.sin(sweepAngle)*r);ctx.stroke();
+  ctx.restore();
+
+  // Rings
+  [.25,.5,.75,1].forEach(f=>{
+    ctx.strokeStyle=`rgba(0,100,60,${f*.3+.1})`;ctx.lineWidth=1;ctx.setLineDash([3,6]);
+    ctx.beginPath();ctx.arc(cx,cy,r*f,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+  });
+  ctx.strokeStyle='rgba(0,180,80,.3)';ctx.lineWidth=1;
+  [0,45,90,135,180,225,270,315].forEach(a=>{
+    const rad=a*Math.PI/180;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(rad)*r,cy+Math.sin(rad)*r);ctx.stroke();
+  });
+
+  // Rain returns
+  const cells=[
+    {x:cx+r*.35,y:cy-r*.55,r:r*.22,i:0.8},
+    {x:cx-r*.25,y:cy-r*.38,r:r*.15,i:0.4},
+    {x:cx+r*.55,y:cy-r*.22,r:r*.28,i:1.0},
+    {x:cx-r*.48,y:cy-r*.65,r:r*.12,i:0.3},
+  ];
+  cells.forEach(c=>{
+    const g=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,c.r);
+    if(c.i>0.7){g.addColorStop(0,'rgba(255,20,0,.5)');g.addColorStop(.4,'rgba(255,140,0,.35)');g.addColorStop(.8,'rgba(255,220,0,.15)');g.addColorStop(1,'rgba(0,0,0,0)')}
+    else if(c.i>0.4){g.addColorStop(0,'rgba(255,180,0,.4)');g.addColorStop(.5,'rgba(100,200,100,.2)');g.addColorStop(1,'rgba(0,0,0,0)')}
+    else{g.addColorStop(0,'rgba(0,200,100,.3)');g.addColorStop(1,'rgba(0,0,0,0)')}
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(c.x,c.y,c.r,0,Math.PI*2);ctx.fill();
+  });
+
+  // Aircraft
+  ctx.strokeStyle='#ffff00';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx,cy-10);ctx.lineTo(cx,cy+7);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-13,cy+2);ctx.lineTo(cx+13,cy+2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-6,cy+7);ctx.lineTo(cx+6,cy+7);ctx.stroke();
+
+  // Labels
+  ctx.font='9px "Share Tech Mono"';ctx.fillStyle='rgba(0,200,80,.5)';ctx.textAlign='center';
+  ['20','40','60','80'].forEach((l,i)=>{
+    ctx.fillText(l+'NM',cx+r*(i+1)/4+8,cy+4);
+  });
+  ctx.font='10px "Orbitron"';ctx.fillStyle='rgba(0,229,255,.5)';
+  ctx.textAlign='left';ctx.fillText('WXR-2100',8,20);
+  ctx.fillText('MODE: AUTO',8,32);
+  ctx.fillText('TILT: -2.5°',8,44);
+  ctx.fillText('GAIN: AUTO',8,56);
+}
+
+// ═══════════════════════════════════════════════════
+// FLIGHT PLAN PAGE
+// ═══════════════════════════════════════════════════
+function renderFPL(){
+  const rows=document.getElementById('fpl-rows');if(!rows)return;
+  rows.innerHTML=S.waypoints.map((w,i)=>`
+    <div class="wp-row ${i===S.activeWP?'active-wp':i<S.activeWP?'passed':''}">
+      <span class="wp-idx">${i+1}</span>
+      <span class="wp-id">${w.id}</span>
+      <span class="wp-type">${w.type}</span>
+      <span class="wp-lat">${w.lat.toFixed(3)}N</span>
+      <span class="wp-lon">${Math.abs(w.lon).toFixed(3)}W</span>
+      <span class="wp-alt">${w.alt}</span>
+      <span class="wp-eta">${w.eta}</span>
+      <div class="wp-acts">
+        <button class="wp-btn wp-btn-d" onclick="deleteWP(${i})">DEL</button>
+        ${i!==S.activeWP?`<button class="wp-btn wp-btn-e" onclick="directTo(${i})">DIR</button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function addWaypoint(){
+  const id=document.getElementById('wp-ident').value.toUpperCase().trim();
+  const lat=parseFloat(document.getElementById('wp-lat').value);
+  const lon=parseFloat(document.getElementById('wp-lon').value);
+  const alt=document.getElementById('wp-alt').value||'FL370';
+  const pos=parseInt(document.getElementById('wp-pos').value)||S.waypoints.length;
+  if(!id||isNaN(lat)||isNaN(lon)){toast('⚠ Invalid waypoint data',true);return}
+  const eta=`${String(Math.floor(17+pos*.5)).padStart(2,'0')}:${String(Math.round((pos*.5%1)*60)).padStart(2,'0')}Z`;
+  S.waypoints.splice(pos-1,0,{id,lat,lon,alt,eta,dtg:Math.round(200+pos*80),type:'MANUAL'});
+  renderFPL();
+  toast(`✓ Inserted ${id} at position ${pos}`);
+  document.getElementById('wp-ident').value='';
+  document.getElementById('wp-lat').value='';
+  document.getElementById('wp-lon').value='';
+}
+
+function deleteWP(i){
+  if(i===S.activeWP){toast('⚠ Cannot delete active waypoint',true);return}
+  const id=S.waypoints[i].id;
+  S.waypoints.splice(i,1);
+  if(S.activeWP>i)S.activeWP--;
+  renderFPL();
+  toast(`✓ Deleted waypoint ${id}`);
+  document.getElementById('alert-badge').textContent=S.waypoints.length;
+}
+
+function directTo(i){S.activeWP=i;renderFPL();toast(`✓ Direct to ${S.waypoints[i].id}`)}
+
+// ═══════════════════════════════════════════════════
+// SYSTEMS PAGE
+// ═══════════════════════════════════════════════════
+const SYS_DATA=[
+  {id:'electrical',name:'ELECTRICAL',st:'ok',params:{'BUS VOLTS':'115V','FREQ':'400Hz','GEN 1':'ON','GEN 2':'ON'}},
+  {id:'hydraulic_a',name:'HYDRAULIC A',st:'ok',params:{'PRESSURE':'3010 PSI','QTY':'100%','PUMP 1':'ON','PUMP 2':'ON'}},
+  {id:'hydraulic_b',name:'HYDRAULIC B',st:'ok',params:{'PRESSURE':'2990 PSI','QTY':'98%','PUMP 1':'ON','PUMP 2':'ON'}},
+  {id:'pneumatic',name:'PNEUMATIC',st:'ok',params:{'BLEED 1':'OPEN','BLEED 2':'OPEN','XBLEED':'AUTO','PRESS':'~45 PSI'}},
+  {id:'pressurization',name:'PRESSURIZATION',st:'ok',params:{'CAB ALT':'7,200 FT','DIFF PRESS':'8.23 PSI','V/S':'-200 FPM','MODE':'AUTO'}},
+  {id:'apu',name:'APU',st:'warn',params:{'STATUS':'FAULT','N1':'---','EGT':'---','BLEED':'OFF'}},
+  {id:'anti_ice',name:'ANTI-ICE',st:'ok',params:{'WING A/I':'OFF','ENG 1 A/I':'OFF','ENG 2 A/I':'OFF','PROBE HT':'AUTO'}},
+  {id:'fuel',name:'FUEL',st:'ok',params:{'CTR TANK':'22,400 LB','L WING':'31,500 LB','R WING':'31,500 LB','CROSSFEED':'CLOSED'}},
+  {id:'fire',name:''FIRE PROT',st:'ok',params:{'ENG 1 LOOP':'NORMAL','ENG 2 LOOP':'NORMAL','APU LOOP':'FAULT','CARGO':'ARMED'}},
+  {id:'flight_controls',name:'FLIGHT CTRL',st:'ok',params:{'SPOILERS':'ARMED','FLAPS':'0','SLATS':'0','RUDDER':'FREE'}},
+  {id:'irs',name:'IRS',st:'ok',params:{'IRS 1':'NAV','IRS 2':'NAV','IRS 3':'NAV','ALIGN':'COMPLETE'}},
+  {id:'doors',name:'DOORS',st:'ok',params:{'FWD ENTRY':'CLOSED','AFT ENTRY':'CLOSED','CARGO FWD':'CLOSED','CARGO AFT':'CLOSED'}},
+];
+
+function renderSys(){
+  const g=document.getElementById('sys-synoptic');if(!g)return;
+  g.innerHTML=SYS_DATA.map(s=>`
+    <div class="sys-card ${s.st==='warn'?'warn-card':''}">
+      <div class="sys-card-hdr">
+        <span class="sys-card-name">${s.name}</span>
+        <span class="sys-card-status ${s.st==='ok'?'sc-ok':s.st==='warn'?'sc-warn':'sc-fail'}">${s.st.toUpperCase()}</span>
+      </div>
+      <div class="sys-params">
+        ${Object.entries(s.params).map(([k,v])=>`<div class="sp"><span class="sp-k">${k}</span><span class="sp-v" style="color:${s.st==='warn'&&v==='FAULT'?'var(--amber)':'var(--white)'}">${v}</span></div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// ALERTS PAGE
+// ═══════════════════════════════════════════════════
+const ALERTS=[
+  {id:'A001',sev:'CAUTION',cat:'APU',msg:'APU FAULT',sys:'apu',time:'14:18:22Z',acked:false},
+  {id:'A002',sev:'ADVISORY',cat:'COMMS',msg:'SEATBELT SIGN ON',sys:'cabin',time:'14:10:00Z',acked:true},
+  {id:'A003',sev:'ADVISORY',cat:'NAV',msg:'TCAS RA CLEAR',sys:'tcas',time:'13:55:11Z',acked:true},
+  {id:'A004',sev:'ADVISORY',cat:'FUEL',msg:'FUEL IMBALANCE < 500 LB',sys:'fuel',time:'13:42:00Z',acked:false},
+];
+
+function renderAlerts(){
+  const list=document.getElementById('alert-list');if(!list)return;
+  const w=ALERTS.filter(a=>a.sev==='WARNING').length;
+  const c=ALERTS.filter(a=>a.sev==='CAUTION').length;
+  const adv=ALERTS.filter(a=>a.sev==='ADVISORY').length;
+  setTxt('cnt-w',w+' WARNING');setTxt('cnt-c',c+' CAUTION');setTxt('cnt-a',adv+' ADVISORY');
+  document.getElementById('alert-badge').textContent=w+c+adv;
+  list.innerHTML=ALERTS.map(a=>`
+    <div class="alert-item ${a.sev==='WARNING'?'ai-warn':a.sev==='CAUTION'?'ai-caut':'ai-adv'}">
+      <span class="ai-sev ${a.sev==='WARNING'?'sev-w':a.sev==='CAUTION'?'sev-c':'sev-a'}">${a.sev}</span>
+      <span class="ai-msg">${a.cat} — ${a.msg}</span>
+      <span class="ai-sys">${a.sys.toUpperCase()}</span>
+      <span class="ai-time">${a.time}</span>
+      <button class="ai-ack ${a.acked?'acked':''}" onclick="ackAlert('${a.id}')">${a.acked?'ACKNOWLEDGED':'ACK'}</button>
+    </div>`).join('');
+}
+
+function ackAlert(id){
+  const a=ALERTS.find(x=>x.id===id);
+  if(a&&!a.acked){a.acked=true;renderAlerts();toast(`✓ Alert ${id} acknowledged`)}
+}
+
+// ═══════════════════════════════════════════════════
+// API DOCS PAGE
+// ═══════════════════════════════════════════════════
+const API_ENDPOINTS=[
+  {tag:'Telemetry',method:'GET',path:'/telemetry',summary:'Current flight telemetry snapshot',
+    params:[{n:'flight_id',in:'query',t:'string',d:'Flight identifier'}],
+    resp:[{c:200,d:'TelemetrySnapshot'},{c:401,d:'Unauthorized'},{c:503,d:'Data bus error'}],
+    example:`{\n  "timestamp": "2026-03-13T14:22:47Z",\n  "flight_id": "AS2847",\n  "attitude": {\n    "pitch_deg": 1.2,\n    "roll_deg": 2.5\n  },\n  "speeds": {\n    "ias_kt": 280,\n    "mach": 0.840,\n    "gs_kt": 481\n  },\n  "position": {\n    "latitude": 47.3821,\n    "longitude": -42.7419,\n    "altitude_ft": 37000\n  }\n}`},
+  {tag:'Telemetry',method:'GET',path:'/telemetry/stream',summary:'SSE live stream at up to 50 Hz',
+    params:[{n:'rate_hz',in:'query',t:'integer',d:'1–50 Hz (default: 10)'}],
+    resp:[{c:200,d:'text/event-stream'}],example:`data: {"timestamp":"2026-03-13T14:22:47.821Z","ias_kt":280.3}\n\ndata: {"timestamp":"2026-03-13T14:22:47.921Z","ias_kt":280.1}`},
+  {tag:'Autopilot',method:'GET',path:'/autopilot',summary:'Get autopilot state and modes',
+    params:[],resp:[{c:200,d:'AutopilotState'},{c:401,d:'Unauthorized'}],
+    example:`{\n  "engaged": true,\n  "fd_on": true,\n  "autothrust_engaged": true,\n  "lateral_mode": "LNAV",\n  "vertical_mode": "VNAV_ALT",\n  "targets": {\n    "target_mach": 0.840,\n    "target_altitude_ft": 37000\n  }\n}`},
+  {tag:'Autopilot',method:'POST',path:'/autopilot/engage',summary:'Engage or disconnect autopilot',
+    params:[{n:'engaged',in:'body',t:'boolean',d:'true=engage, false=disconnect'},{n:'source',in:'body',t:'string',d:'pilot|copilot|fms|ground'}],
+    resp:[{c:200,d:'AutopilotState'},{c:409,d:'Attitude out of limits'},{c:423,d:'Locked by priority source'}],
+    example:`// Request\n{\n  "engaged": true,\n  "source": "fms"\n}\n\n// Response 200\n{\n  "engaged": true,\n  "lateral_mode": "LNAV",\n  "vertical_mode": "VNAV_ALT"\n}`},
+  {tag:'Autopilot',method:'PATCH',path:'/autopilot/targets',summary:'Update AP speed/altitude/heading targets',
+    params:[{n:'target_mach',in:'body',t:'number',d:'0.60–0.88'},{n:'target_altitude_ft',in:'body',t:'integer',d:'0–45000'},{n:'target_heading_deg',in:'body',t:'integer',d:'0–360'},{n:'target_vs_fpm',in:'body',t:'integer',d:'-8000 to +8000'}],
+    resp:[{c:200,d:'Updated targets'},{c:400,d:'Out of range value'}],
+    example:`// Climb to FL390\n{\n  "target_altitude_ft": 39000,\n  "target_vs_fpm": 1500\n}`},
+  {tag:'Flight Management',method:'GET',path:'/fms/route',summary:'Get active flight plan',
+    params:[],resp:[{c:200,d:'FlightPlan'}],
+    example:`{\n  "origin": "KJFK",\n  "destination": "EGLL",\n  "waypoints": [\n    {"identifier":"MERIT","lat":47.38,"lon":-42.74},\n    {"identifier":"JANJO","lat":50.12,"lon":-38.20}\n  ],\n  "active_leg": 0\n}`},
+  {tag:'Flight Management',method:'POST',path:'/fms/route/waypoints',summary:'Insert waypoint into active route',
+    params:[{n:'waypoint',in:'body',t:'Waypoint',d:'Waypoint object'},{n:'position',in:'body',t:'integer',d:'Sequence index (-1=append)'}],
+    resp:[{c:201,d:'Updated FlightPlan'},{c:400,d:'Invalid fix'}],
+    example:`{\n  "waypoint": {\n    "identifier": "SOMAX",\n    "latitude": 54.20,\n    "longitude": -18.40\n  },\n  "position": 3\n}`},
+  {tag:'Engine',method:'GET',path:'/engines',summary:'Get all engine parameters',
+    params:[],resp:[{c:200,d:'Engine array'}],
+    example:`{\n  "count": 2,\n  "engines": [\n    {\n      "engine_id": 1,\n      "n1_pct": 84.6,\n      "egt_c": 741,\n      "ff_kg_h": 1095,\n      "status": "RUNNING",\n      "thrust_rating": "CRZ"\n    }\n  ]\n}`},
+  {tag:'Engine',method:'POST',path:'/engines/{id}/thrust',summary:'Command FADEC thrust rating',
+    params:[{n:'engine_id',in:'path',t:'integer',d:'1–4'},{n:'thrust_rating',in:'body',t:'enum',d:'TOGA|FLEX|MCT|CLB|CRZ|IDLE|REVERSE'}],
+    resp:[{c:200,d:'Engine data'},{c:409,d:'FADEC rejected'}],
+    example:`{\n  "thrust_rating": "CLB",\n  "flex_temp": null\n}`},
+  {tag:'Navigation',method:'GET',path:'/navigation/position',summary:'Current IRS/GPS blended position',
+    params:[],resp:[{c:200,d:'NavigationPosition'}],
+    example:`{\n  "blended_latitude": 47.3821,\n  "blended_longitude": -42.7419,\n  "gps_accuracy_nm": 0.05,\n  "source": "GPS",\n  "position_uncertainty_nm": 0.08\n}`},
+  {tag:'Navigation',method:'GET',path:'/navigation/tcas',summary:'TCAS traffic picture',
+    params:[],resp:[{c:200,d:'TCASData'}],
+    example:`{\n  "mode": "TA_RA",\n  "ra_active": false,\n  "targets": [\n    {\n      "callsign": "UAL441",\n      "relative_alt_ft": +1000,\n      "distance_nm": 4.2,\n      "threat_level": "PROXIMATE"\n    }\n  ]\n}`},
+  {tag:'Systems',method:'GET',path:'/systems',summary:'All aircraft systems status map',
+    params:[],resp:[{c:200,d:'Systems map object'}],
+    example:`{\n  "electrical": {"status":"NORMAL"},\n  "hydraulic_a": {"status":"NORMAL"},\n  "apu": {"status":"ADVISORY_H"},\n  "pressurization": {"status":"NORMAL"}\n}`},
+  {tag:'Communications',method:'PATCH',path:'/comms/transponder',summary:'Update transponder code and mode',
+    params:[{n:'squawk',in:'body',t:'string[4]',d:'Octal 0000–7777'},{n:'mode',in:'body',t:'enum',d:'OFF|STBY|ON|ALT|TA|TA_RA'},{n:'ident',in:'body',t:'boolean',d:'Trigger IDENT'}],
+    resp:[{c:200,d:'TransponderState'}],
+    example:`{\n  "squawk": "4823",\n  "mode": "TA_RA",\n  "ident": false\n}`},
+  {tag:'Alerts',method:'GET',path:'/alerts',summary:'Active cautions and warnings',
+    params:[{n:'severity',in:'query',t:'enum',d:'WARNING|CAUTION|ADVISORY|ALL'},{n:'acknowledged',in:'query',t:'boolean',d:'Filter by ack status'}],
+    resp:[{c:200,d:'Alert list with master flags'}],
+    example:`{\n  "master_warning": false,\n  "master_caution": true,\n  "alerts": [\n    {\n      "id": "A001",\n      "severity": "CAUTION",\n      "message": "APU FAULT",\n      "acknowledged": false\n    }\n  ]\n}`},
+  {tag:'Health',method:'GET',path:'/health',summary:'System health check (public)',
+    params:[],resp:[{c:200,d:'All systems nominal'},{c:503,d:'Degraded operation'}],
+    example:`{\n  "status": "OK",\n  "version": "2.1.0",\n  "uptime_sec": 84720,\n  "arinc_bus_ok": true,\n  "active_alerts": 2\n}`},
+];
+
+function renderAPI(){
+  const sb=document.getElementById('api-sidebar');
+  const mn=document.getElementById('api-main');
+  if(!sb||!mn)return;
+  const groups={};
+  API_ENDPOINTS.forEach(e=>{if(!groups[e.tag])groups[e.tag]=[];groups[e.tag].push(e)});
+  sb.innerHTML=Object.entries(groups).map(([tag,eps])=>`
+    <div class="api-grp">${tag.toUpperCase()}</div>
+    ${eps.map((e,i)=>`
+      <div class="api-ep ${i===0&&tag==='Telemetry'?'sel':''}" onclick="showEndpoint(this,'${tag}_${i}')">
+        <span class="mth mth-${e.method.toLowerCase()}">${e.method}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.path}</span>
+      </div>`).join('')}
+  `).join('');
+
+  mn.innerHTML=API_ENDPOINTS.map((e,idx)=>`
+    <div class="api-endpoint-view ${idx===0?'vis':''}" id="ep-${e.tag.replace(/\s/g,'_')}_${API_ENDPOINTS.filter((x,i)=>x.tag===e.tag&&i<=idx).length-1}">
+      <div class="aev-header">
+        <span class="aev-method ${e.method==='GET'?'mth-get':e.method==='POST'?'mth-post':e.method==='PUT'?'mth-put':e.method==='PATCH'?'mth-patch':'mth-del'}" style="padding:6px 14px;border-radius:3px;font-family:var(--font-hud);font-size:10px;letter-spacing:1px">${e.method}</span>
+        <span class="aev-path">${e.path}</span>
+        <span style="font-family:var(--font-hud);font-size:7px;padding:2px 10px;border-radius:10px;background:rgba(255,255,255,.05);color:var(--gray);border:1px solid var(--border)">${e.tag}</span>
+      </div>
+      <p class="aev-desc">${e.summary}</p>
+      <div class="aev-grid">
+        <div>
+          <div class="aev-section-lbl">Parameters</div>
+          ${e.params.length?e.params.map(p=>`
+            <div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;align-items:flex-start">
+              <span style="font-family:var(--font-mono);color:var(--cyan);min-width:90px">${p.n}</span>
+              <span style="font-family:var(--font-hud);font-size:7px;padding:1px 6px;border-radius:2px;background:rgba(255,255,255,.06);color:var(--gray);white-space:nowrap">${p.in}</span>
+              <span style="font-family:var(--font-mono);color:var(--purple);font-size:10px;white-space:nowrap">${p.t}</span>
+              <span style="color:var(--gray);font-size:11px">${p.d}</span>
+            </div>`).join(''):'<p style="color:var(--gray);font-size:11px">No parameters</p>'}
+          <div class="aev-section-lbl" style="margin-top:16px">Responses</div>
+          ${e.resp.map(r=>`<div style="display:flex;gap:8px;padding:4px 0;font-size:11px;align-items:center">
+            <span style="font-family:var(--font-mono);font-size:10px;font-weight:700;min-width:32px;color:${r.c<300?'var(--green)':r.c<400?'var(--cyan)':r.c<500?'var(--amber)':'var(--red)'}">${r.c}</span>
+            <span style="color:var(--gray)">${r.d}</span>
+          </div>`).join('')}
+          <div class="try-section">
+            <div class="aev-section-lbl">TRY IT</div>
+            <div class="try-url-bar">
+              <input class="try-input" value="https://aerosys-9000.vercel.app/api/v2${e.path}" readonly>
+              <button class="try-send" onclick="mockRequest(this,'${e.method}','${e.path}')">SEND</button>
+            </div>
+            <div class="try-resp" id="resp-${idx}">// Click SEND to execute mock request</div>
+          </div>
+        </div>
+        <div>
+          <div class="aev-section-lbl">Example Response</div>
+          <div class="code-blk"><pre style="white-space:pre-wrap">${highlightJSON(e.example)}</pre></div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function highlightJSON(s){
+  return s.replace(/"([^"]+)":/g,'<span class="ck">"$1"</span>:')
+    .replace(/: "([^"]+)"/g,': <span class="cs">"$1"</span>')
+    .replace(/: ([0-9.]+)/g,': <span class="cv">$1</span>')
+    .replace(/: (true|false|null)/g,': <span class="cp">$1</span>')
+    .replace(/(\/\/.*)/g,'<span class="cc">$1</span>');
+}
+
+function showEndpoint(el,id){
+  document.querySelectorAll('.api-ep').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
+  document.querySelectorAll('.api-endpoint-view').forEach(v=>v.classList.remove('vis'));
+  const view=document.getElementById('ep-'+id);
+  if(view)view.classList.add('vis');
+}
+
+function mockRequest(btn,method,path){
+  const respEl=btn.closest('.try-section').querySelector('.try-resp');
+  respEl.textContent='// Sending request...';
+  respEl.style.color='var(--amber)';
+  setTimeout(()=>{
+    const snap={timestamp:new Date().toISOString(),flight_id:'AS2847',
+      attitude:{pitch_deg:S.pitch.toFixed(2),roll_deg:S.roll.toFixed(2)},
+      speeds:{ias_kt:Math.round(S.ias),mach:S.mach.toFixed(3),gs_kt:S.gs},
+      position:{latitude:47.3821,longitude:-42.7419,altitude_ft:Math.round(S.alt)}};
+    respEl.textContent='// HTTP 200 OK\n'+JSON.stringify(snap,null,2);
+    respEl.style.color='var(--green)';
+  },480);
+}
+
+function copyBaseURL(){
+  navigator.clipboard?.writeText('https://aerosys-9000.vercel.app/api/v2').then(()=>toast('✓ URL copied to clipboard'));
+}
+
+// ═══════════════════════════════════════════════════
+// AP BUTTONS
+// ═══════════════════════════════════════════════════
+function toggleAP(){S.apOn=!S.apOn;const b=document.getElementById('apb-ap');b.className='apb'+(S.apOn?' on':'');toast(S.apOn?'A/P ENGAGED':'A/P DISCONNECTED',!S.apOn)}
+function toggleAT(){S.atOn=!S.atOn;const b=document.getElementById('apb-at');b.className='apb'+(S.atOn?' am':'');toast(S.atOn?'A/THR ENGAGED':'A/THR OFF')}
+function toggleFD(){S.fdOn=!S.fdOn;const b=document.getElementById('apb-fd');b.className='apb'+(S.fdOn?' on':'');toast('F/D '+(S.fdOn?'ON':'OFF'))}
+function toggleHDG(){S.lnav=!S.lnav;const b=document.getElementById('apb-lat');b.className='apb'+(S.lnav?' on':' cy');b.textContent=S.lnav?'LNAV':'HDG SEL';toast('LAT MODE: '+(S.lnav?'LNAV':'HDG SEL'))}
+function toggleVS(){S.vnav=!S.vnav;const b=document.getElementById('apb-vert');b.className='apb'+(S.vnav?' on':' cy');b.textContent=S.vnav?'VNAV ALT':'V/S';toast('VERT MODE: '+(S.vnav?'VNAV ALT':'V/S'))}
+
+// ═══════════════════════════════════════════════════
+// MAIN LOOP
+// ═══════════════════════════════════════════════════
+function resize(){resizePFD();resizeND();resizeWX()}
+function loop(ts){
+  const dt=Math.min((ts-lastT)/1000,.1);lastT=ts;
+  tick();simulate(dt);drawPFD();drawND();drawWX();
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize',resize);
+initPFD();initND();initWX();
+resize();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
