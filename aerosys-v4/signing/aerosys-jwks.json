@@ -1,1 +1,53 @@
-
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "use": "sig",
+      "alg": "RS256",
+      "kid": "aerosys-lead-eng-v1",
+      "n": "qtdwrhpGQJ1tdyA4H1qtk59rr_F7vS86iRnWoy1H9uPQV__9zykSbNJ86BQymmP8gYdUnhV6G_t1ySKxlugDOUVKKcYrr1ULhHsoUYnKnunYivgbf-oXVlzr9iUiXApT6UAyV9B8xyRk1xKh6zX850LZC2yXvEbqPGavMPmC_1qL06xyQb6xXblxnLwof-2mwBa-dRCpheehklr-mmjQfw-ldWVv2cKNQU2GjjbA6vYeuKO9se-1rFJBYdHZ4AY50Mo0Zb8AGgmzRWbso4cL3ISiJxOHg0tRnlNjR9IdibWDgmiMmDP0N3J4JVDLSy65HR6_-sOcWrstbgTSSb6CrQ",
+      "e": "AQAB",
+      "x-role": "lead_software_engineer",
+      "x-name": "Dr. Sarah J. Okonkwo",
+      "x-org": "AeroSys Avionics Systems Ltd.",
+      "x-email": "s.okonkwo@aerosys.aero"
+    },
+    {
+      "kty": "RSA",
+      "use": "sig",
+      "alg": "RS256",
+      "kid": "aerosys-der-v1",
+      "n": "0zsRQ50aGSvGrbTufixHSQSEs1BlA8XObxde6x028jYCBQoS703RfB3lShwHa9B31W4mlgrzRnaQOOvKCdc5ZA55GxrxWp5t9U1tCd2f7hp5qH9Ij9Q0CTG-I6ZtV_PkCQ9pVQ9b2VFjVc4MJuVas4lD5ad5Htql0gns0vofdeEc0BUeIaZp9bD9v_n-gaaYIex4Hk5zl17Bv2Enp_3oZeM7vyr0BOBqj8qj9M75uPiEMWweApfAxES2hIWC_k315XaF0TaFx5mtjzT4qE1HdszqhVtLLWkUh7WssH4_U_HpVsNPQ0pWEtDNcTmUHLP1QdoJO9GTnS_VDYzMLl5tuQ",
+      "e": "AQAB",
+      "x-role": "designated_engineering_representative",
+      "x-name": "William H. Carmichael, P.E.",
+      "x-org": "Carmichael Avionics Certification Services LLC",
+      "x-email": "w.carmichael@cacs-der.aero",
+      "x-der-cert": "CE-SW-2019-0047"
+    },
+    {
+      "kty": "RSA",
+      "use": "sig",
+      "alg": "RS256",
+      "kid": "aerosys-qa-v1",
+      "n": "sPxuAGmDpRoVpGDxWtg_U8K-Y2frjG8raMHZyxzEPbgtP9cZGgkmNEfWZYwAOf5traSkBG-1xFhmpqsaAS0uKMF9Gc_ZjOiaCnCkjEUfADR9FKu3sNU4PdLrurceLCWg9A78F1rOXwh3npWb0KPJAQ5SesiEpAFL7QaDrsnPKg8r30hmTlfj5QSuU5GPSVe_sAQM3iXchpcuPE-QvsuwXSfw9so9omYWz7l6OnAB4Dp2qgmqw082yuwrbTmMkAT22B2l5pl7y8bzjxgoC2pEQQej6F__U4FlF4WvRRkIlIzotP89qNXu6eHgh8Cbx_5eNbpqAbFxB04txpppyGvjcQ",
+      "e": "AQAB",
+      "x-role": "quality_assurance_manager",
+      "x-name": "Marcus T. Reinholt",
+      "x-org": "AeroSys Avionics Systems Ltd.",
+      "x-email": "m.reinholt@aerosys.aero"
+    },
+    {
+      "kty": "RSA",
+      "use": "sig",
+      "alg": "RS256",
+      "kid": "aerosys-aero-api-v1",
+      "n": "sqLFgMIhhE1FbACmD3QkqrE9gNXlq-R34eWWSUTrkjS8-_ZAkQHvtDHkWcsHCDOMlQGvulG3kvRC2ydFzlCsgiMv7mskz4DEO8YjW0sedw7_KNGs4t4mH9PIEbXyrUqTXeIzLP0xPTnuFoARB1KqA3MNZnRsLAX90FDfEKqn2-QTPFI63bqJOtnbfWkmJ9RDGh-KJAxiAyBZnYuVZYKg8bcwjbpIfzwXMHOQLg6v_CQKZlpmcBdURGm05Hw0TeDRsX1YCS4GGcmf9IhOyWkiz7d1kn3lUXunrjTp0OmCSlEPhVhHMO4J4EB0vMLsdsd6yv8zIE6UXu6kIXH9etMglQ",
+      "e": "AQAB",
+      "x-role": "software_system",
+      "x-name": "AeroSys 9000 REST API",
+      "x-org": "AeroSys Avionics Systems Ltd.",
+      "x-email": "api@aerosys.aero"
+    }
+  ]
+}

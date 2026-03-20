@@ -1,0 +1,102 @@
+{
+  "schema_version": "1.0",
+  "product": "AeroSys 9000",
+  "part_number": "AEROSYS-SW-001-REV-A",
+  "version": "1.0.0",
+  "signed_at": "2026-03-19T07:08:15.000Z",
+  "jwks_url": "https://aerosys-9000.vercel.app/.well-known/jwks.json",
+  "attestations": {
+    "lead_engineer": {
+      "file": "AEROSYS-LEAD-ENG-ATTESTATION.jwt",
+      "kid": "aerosys-lead-eng-v1",
+      "alg": "RS256"
+    },
+    "der": {
+      "file": "AEROSYS-DER-ATTESTATION.jwt",
+      "kid": "aerosys-der-v1",
+      "alg": "RS256"
+    },
+    "qa_manager": {
+      "file": "AEROSYS-QA-ATTESTATION.jwt",
+      "kid": "aerosys-qa-v1",
+      "alg": "RS256"
+    },
+    "api_system": {
+      "file": "AEROSYS-API-SELF-ATTESTATION.jwt",
+      "kid": "aerosys-aero-api-v1",
+      "alg": "RS256"
+    }
+  },
+  "document_hashes": {
+    "PSAC": {
+      "docNo": "AEROSYS-PSAC-001-RevA",
+      "sha256": "261ba62ec8290837a29658e7b7d109a9a48e723305e588230685e2de3b6ecd2e",
+      "file": "AEROSYS-PSAC-001-RevA.docx"
+    },
+    "SDP": {
+      "docNo": "AEROSYS-SDP-001-RevA",
+      "sha256": "6a474b8537333b06ab871336eb7691a50deb1c03ffd6f77365bd0e8c10253699",
+      "file": "AEROSYS-SDP-001-RevA.docx"
+    },
+    "SVP": {
+      "docNo": "AEROSYS-SVP-001-RevA",
+      "sha256": "803f91348267501300be5342eed994bf7a34e7f36b89424c1f31a141788a3919",
+      "file": "AEROSYS-SVP-001-RevA.docx"
+    },
+    "SCMP": {
+      "docNo": "AEROSYS-SCMP-001-RevA",
+      "sha256": "1561ce30a026fc19c5124c6e611dd70e4929c001be5d33a5115c4bbc5acc4423",
+      "file": "AEROSYS-SCMP-001-RevA.docx"
+    },
+    "SQAP": {
+      "docNo": "AEROSYS-SQAP-001-RevA",
+      "sha256": "a545f7024a2c967ab6ed737ff2ed51d9b07def3c95d2c93d6a082dc3239a7170",
+      "file": "AEROSYS-SQAP-001-RevA.docx"
+    },
+    "TQP": {
+      "docNo": "AEROSYS-TQP-001-RevA",
+      "sha256": "6bbe77fe95a1359c2a336e59c514cd91c604fedfe683d5512b5e00b0ddff1d6a",
+      "file": "AEROSYS-TQP-001-RevA.docx"
+    },
+    "SRS": {
+      "docNo": "AEROSYS-SRS-001-RevA",
+      "sha256": "f37ddfc2bae1c20bfd95caebc01e9108168a2fd039e5a121c7afb634ef9ebdaa",
+      "file": "AEROSYS-SRS-001-RevA.docx"
+    },
+    "SDD": {
+      "docNo": "AEROSYS-SDD-001-RevA",
+      "sha256": "4a0739f0ae075352fb2b92b379b678224521f669ca8e3d64203fda59ea1dcd0a",
+      "file": "AEROSYS-SDD-001-RevA.docx"
+    },
+    "SVCP": {
+      "docNo": "AEROSYS-SVCP-001-RevA",
+      "sha256": "68ffffa89ab6e17d82af9abc66e1ed7853ba69d9019d4d68591047b9aa3c5a33",
+      "file": "AEROSYS-SVCP-001-RevA.docx"
+    },
+    "SVTR": {
+      "docNo": "AEROSYS-SVTR-001-RevA",
+      "sha256": "53fcb2559b138d5fbc11163d583dca41dc9998d62789351159d9a169c9cd920d",
+      "file": "AEROSYS-SVTR-001-RevA.docx"
+    },
+    "SCI": {
+      "docNo": "AEROSYS-SCI-001-RevA",
+      "sha256": "53d0161c9d1d310bee2e4d6da39ed3537e2431dc0b09f27ae12b1c0b41caf84d",
+      "file": "AEROSYS-SCI-001-RevA.docx"
+    },
+    "SAS": {
+      "docNo": "AEROSYS-SAS-001-RevC",
+      "sha256": "739fcf2bb9f0900929ae6a251ffe7b55c8e2bfe70955632bd5981712bc165b71",
+      "file": "AEROSYS-SAS-001-RevC-SUBMISSION.docx"
+    }
+  },
+  "verification_instructions": {
+    "step1": "Download aerosys-jwks.json — contains all public keys",
+    "step2": "For each .jwt file: split by \".\" → header.payload.signature",
+    "step3": "Base64url-decode header → extract kid field",
+    "step4": "Find matching key in JWK Set by kid",
+    "step5": "Verify RS256 signature: crypto.verify(\"sha256\", header.payload, publicKey, signature)",
+    "step6": "Base64url-decode payload → confirm all document hashes match your local copies",
+    "step7": "Confirm iss, aud, iat, exp fields match expected values",
+    "node_example": "\nconst jwt = require('fs').readFileSync('AEROSYS-DER-ATTESTATION.jwt','utf8');\nconst [h,p,s] = jwt.split('.');\nconst jwks = JSON.parse(require('fs').readFileSync('aerosys-jwks.json'));\nconst header = JSON.parse(Buffer.from(h,'base64url'));\nconst key = jwks.keys.find(k => k.kid === header.kid);\nconst pub = require('crypto').createPublicKey({ key, format:'jwk' });\nconst ok = require('crypto').verify('sha256',\n  Buffer.from(h+'.'+p), { key:pub, padding:require('crypto').constants.RSA_PKCS1_PADDING },\n  Buffer.from(s,'base64url'));\nconsole.log('DER signature valid:', ok);\nconsole.log('Payload:', JSON.parse(Buffer.from(p,'base64url')));"
+  }
+}
