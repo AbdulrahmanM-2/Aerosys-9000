@@ -1,0 +1,43 @@
+------------------------------------------------------------------------------
+--  aerosys_tests.gpr — AUnit Test Suite Project
+--  Build: gprbuild -P aerosys_tests.gpr -Xmode=coverage
+--  Run:   ./bin/aerosys_tests
+--  Coverage: gnatcov coverage --level=stmt+mcdc --annotate=xcov+ ...
+------------------------------------------------------------------------------
+
+with "aunit";
+with "aerosys.gpr";
+
+project AeroSys_Tests is
+
+   type Build_Mode_Type is ("debug", "coverage");
+   Mode : Build_Mode_Type := external ("mode", "coverage");
+
+   for Source_Dirs use ("src");
+   for Object_Dir  use "obj/tests";
+   for Exec_Dir    use "bin";
+   for Main        use ("aerosys_test_runner.adb");
+
+   Common_Flags := ("-gnat2022", "-gnato", "-gnatwa", "-gnatVa", "-g");
+   Cover_Flags  := Common_Flags & ("--coverage", "-fprofile-arcs", "-ftest-coverage");
+
+   package Compiler is
+      case Mode is
+         when "debug"    => for Default_Switches ("Ada") use Common_Flags;
+         when "coverage" => for Default_Switches ("Ada") use Cover_Flags;
+      end case;
+   end Compiler;
+
+   package Builder is
+      for Default_Switches ("Ada") use ("-j0");
+      for Executable ("aerosys_test_runner.adb") use "aerosys_tests";
+   end Builder;
+
+   package Linker is
+      case Mode is
+         when "coverage" => for Default_Switches ("Ada") use ("--coverage");
+         when others     => null;
+      end case;
+   end Linker;
+
+end AeroSys_Tests;
