@@ -4,11 +4,9 @@
   "description": "AeroSys 9000 v4 — Multi-type avionics platform with ARINC 429 bus layer",
   "private": true,
   "scripts": {
-    "dev": "vercel dev",
+    "dev":    "npx vercel dev",
     "deploy": "vercel --prod",
-    "start": "npx serve public -p 3000"
+    "start":  "npx serve public -p 3000"
   },
-  "engines": {
-    "node": ">=18.0.0"
-  }
+  "engines": { "node": ">=18.0.0" }
 }
