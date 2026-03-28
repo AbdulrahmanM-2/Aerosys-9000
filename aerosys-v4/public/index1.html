@@ -1,0 +1,33 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Cockpit Dashboard</title>
+<style>
+body { font-family: Arial; background:#111; color:#0f0; text-align:center;}
+.panel {border:1px solid #0f0; padding:20px; width:300px; margin:auto;}
+</style>
+</head>
+<body>
+
+<h1>Flight Display</h1>
+
+<div class="panel">
+Altitude: <span id="alt">--</span><br>
+Speed: <span id="spd">--</span><br>
+Pitch: <span id="pit">--</span>
+</div>
+
+<script>
+const ws = new WebSocket("ws://localhost:4000");
+
+ws.onmessage = e => {
+ const d = JSON.parse(e.data)
+ document.getElementById("alt").innerText = d.altitude.toFixed(1)
+ document.getElementById("spd").innerText = d.speed.toFixed(1)
+ document.getElementById("pit").innerText = d.pitch.toFixed(2)
+}
+</script>
+
+</body>
+</html>
